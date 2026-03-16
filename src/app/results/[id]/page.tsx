@@ -37,7 +37,7 @@ export default function RideDetailPage() {
   });
 
   const handleBook = () => {
-    router.push(`/booking/success?rideId=${ride.id}&driverName=${encodeURIComponent(ride.driver.name)}&from=${encodeURIComponent(ride.from)}&to=${encodeURIComponent(ride.to)}&time=${ride.departureTime}&co2=${ride.co2Saved}&price=${ride.price}`);
+    router.push(`/booking/confirm?rideId=${ride.id}&seats=1`);
   };
 
   return (

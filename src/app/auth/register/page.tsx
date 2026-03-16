@@ -42,7 +42,9 @@ function RegisterContent() {
         carPlate: form.isDriver ? form.carPlate : "",
         carColor: form.isDriver ? form.carColor : "",
       });
-      router.replace("/");
+      const redirect = sessionStorage.getItem("jiuche_redirect") || "/";
+      sessionStorage.removeItem("jiuche_redirect");
+      router.replace(redirect);
     }, 1000);
   };
 

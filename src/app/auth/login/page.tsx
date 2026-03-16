@@ -61,7 +61,9 @@ export default function LoginPage() {
       setVerifying(false);
       if (code === MOCK_OTP) {
         login(phone);
-        router.replace("/");
+        const redirect = sessionStorage.getItem("jiuche_redirect") || "/";
+        sessionStorage.removeItem("jiuche_redirect");
+        router.replace(redirect);
       } else {
         setError("驗證碼錯誤，請重新輸入（提示：888888）");
         setOtp(["", "", "", "", "", ""]);

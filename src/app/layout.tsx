@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import { AuthProvider } from "@/lib/authContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,13 +22,15 @@ export default function RootLayout({
   return (
     <html lang="zh-TW">
       <body className={`${geistSans.variable} antialiased bg-gray-100 min-h-screen`}>
-        {/* 手機版外框 */}
-        <div className="relative mx-auto max-w-md min-h-screen bg-gray-50 shadow-2xl flex flex-col">
-          <main className="flex-1 overflow-y-auto pb-20">
-            {children}
-          </main>
-          <BottomNav />
-        </div>
+        <AuthProvider>
+          {/* 手機版外框 */}
+          <div className="relative mx-auto max-w-md min-h-screen bg-gray-50 shadow-2xl flex flex-col">
+            <main className="flex-1 overflow-y-auto pb-20">
+              {children}
+            </main>
+            <BottomNav />
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

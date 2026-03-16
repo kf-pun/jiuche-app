@@ -1,65 +1,180 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [date, setDate] = useState("");
+
+  const handleSearch = () => {
+    if (!from || !to || !date) return;
+    router.push(`/results?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}`);
+  };
+
+  const today = new Date().toISOString().split("T")[0];
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex flex-col min-h-full">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-green-600 to-emerald-500 px-6 pt-14 pb-10">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="bg-white/20 rounded-xl p-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c-4.97 4.97-4.97 13.03 0 18 4.97-4.97 4.97-13.03 0-18z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c4.97 4.97 4.97 13.03 0 18" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h18" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-wide">揪車 JiuChe</h1>
+            <p className="text-green-100 text-xs">企業 ESG 減碳共乘平台</p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        <p className="text-white/80 text-sm mt-4">
+          找順路夥伴，一起上班，一起減碳 🌿
+        </p>
+      </div>
+
+      {/* Search Card */}
+      <div className="px-4 -mt-5">
+        <div className="bg-white rounded-2xl shadow-lg p-5">
+          <h2 className="text-gray-700 font-semibold text-base mb-4">搜尋共乘行程</h2>
+
+          {/* From */}
+          <div className="mb-3">
+            <label className="text-xs font-medium text-gray-500 mb-1 block">出發地</label>
+            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+              </svg>
+              <input
+                type="text"
+                placeholder="輸入出發地點"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Arrow divider */}
+          <div className="flex items-center justify-center my-1 mb-3">
+            <div className="flex-1 border-t border-dashed border-gray-200" />
+            <div className="mx-3 bg-green-50 rounded-full p-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+            <div className="flex-1 border-t border-dashed border-gray-200" />
+          </div>
+
+          {/* To */}
+          <div className="mb-3">
+            <label className="text-xs font-medium text-gray-500 mb-1 block">目的地</label>
+            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 0 1-2.827 0l-4.244-4.243a8 8 0 1 1 11.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="輸入目的地點"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Date */}
+          <div className="mb-5">
+            <label className="text-xs font-medium text-gray-500 mb-1 block">出發日期</label>
+            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <input
+                type="date"
+                value={date}
+                min={today}
+                onChange={(e) => setDate(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Search Button */}
+          <button
+            onClick={handleSearch}
+            disabled={!from || !to || !date}
+            className="w-full bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold py-4 rounded-xl shadow-md hover:from-green-700 hover:to-emerald-600 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+            尋找順路車
+          </button>
         </div>
-      </main>
+      </div>
+
+      {/* Quick Suggestions */}
+      <div className="px-4 mt-5 mb-4">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">熱門路線</p>
+        <div className="flex flex-col gap-2">
+          {[
+            { from: "捷運市政府站", to: "南港軟體園區", co2: "1.2 kg" },
+            { from: "板橋車站", to: "內湖科學園區", co2: "2.4 kg" },
+            { from: "新店總督府", to: "信義計畫區", co2: "1.8 kg" },
+          ].map((route, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                setFrom(route.from);
+                setTo(route.to);
+              }}
+              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 hover:border-green-300 active:scale-98 transition-all text-left"
+            >
+              <div className="bg-green-50 rounded-lg p-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-700 font-medium truncate">{route.from} → {route.to}</p>
+                <p className="text-xs text-green-500 mt-0.5">可減碳 {route.co2} CO₂</p>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ESG Banner */}
+      <div className="px-4 mb-6">
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-4 flex items-center gap-4">
+          <div className="bg-white/20 rounded-xl p-3">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 0 1 2 2v1a2 2 0 0 0 2 2 2 2 0 0 1 2 2v2.945" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 3.935V5.5A2.5 2.5 0 0 0 10.5 8h.5a2 2 0 0 1 2 2 2 2 0 0 0 4 0 2 2 0 0 1 2-2h1.064" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-white font-bold text-sm">本月企業減碳成果</p>
+            <p className="text-white/80 text-xs mt-0.5">共完成 <span className="font-bold text-white">1,247</span> 趟共乘</p>
+            <p className="text-white/80 text-xs">減少排放 <span className="font-bold text-white">2.3 噸</span> CO₂</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 揪車 JiuChe 🚗🌿
 
-## Getting Started
+> **企業 ESG 減碳共乘平台** — 讓每一次通勤都成為對地球的承諾
 
-First, run the development server:
+---
+
+## 核心理念
+
+「揪車」是一款專為企業員工設計的智慧共乘 App，透過媒合順路通勤者，有效降低碳排放、節省交通成本，並強化企業 ESG 永續報告數據。
+
+- **減碳優先**：每次共乘自動計算節省的 CO₂ 排放量，累積企業碳足跡儀表板
+- **員工福利**：降低通勤成本，增進同事間交流，提升員工滿意度
+- **ESG 合規**：提供可匯出的碳減量報告，協助企業達成 ESG 目標與 SDG 11、13
+
+---
+
+## 技術棧
+
+| 層級 | 技術 |
+|------|------|
+| 前端框架 | Next.js 15 (App Router) |
+| 語言 | TypeScript |
+| 樣式 | Tailwind CSS v4 |
+| 程式碼品質 | ESLint |
+| 套件管理 | npm |
+| 部署目標 | Vercel |
+
+---
+
+## 開發策略
+
+- **前端優先**：以 Mock Data 驅動 UI，快速展示完整使用流程
+- **Mobile-First**：介面以手機版為主，在桌面瀏覽器呈現手機 App 外觀
+- **綠色設計系統**：以綠色系為主色調，傳達環保減碳品牌精神
+
+---
+
+## 一週 Prototype 開發計畫
+
+### Day 1 — 專案初始化 ✅
+- Next.js + TypeScript + Tailwind CSS 環境建置
+- Mobile Layout 框架（max-w-md 置中）
+- 底部導覽列（首頁、我的行程、ESG 減碳）
+- 首頁搜尋 UI（出發地、目的地、日期選擇）
+
+### Day 2 — 搜尋結果頁
+- Mock 共乘列表（司機資訊、出發時間、剩餘座位）
+- 篩選條件（時間範圍、性別偏好）
+- 每趟行程的預估減碳量顯示
+
+### Day 3 — 行程詳情與預訂
+- 司機個人頁面（評分、共乘次數）
+- 預訂確認流程（座位選擇、備註）
+- 預訂成功動畫與通知
+
+### Day 4 — 我的行程頁
+- 即將出發 / 歷史行程列表
+- 行程狀態（待確認、已確認、已完成）
+- 取消行程功能
+
+### Day 5 — ESG 減碳儀表板
+- 個人累積減碳量（kg CO₂）
+- 企業整體共乘統計
+- 月度趨勢圖表
+- ESG 勳章系統
+
+### Day 6 — 登入 / 個人設定
+- 公司 SSO 登入（Mock）
+- 個人資料與車輛設定
+- 通知設定
+
+### Day 7 — 整合測試 & Demo 準備
+- 流程串接與動畫優化
+- Investor Demo 腳本演練
+- Vercel 部署
+
+---
+
+## 快速開始
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+開啟瀏覽器前往 [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 聯絡
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Prototype 版本，僅供投資人展示使用。

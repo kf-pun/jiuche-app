@@ -13,8 +13,8 @@ function StatCard({ label, value, unit }: { label: string; value: string | numbe
   );
 }
 
-function MenuItem({ icon, label, value, href, danger }: {
-  icon: React.ReactNode; label: string; value?: string; href?: string; danger?: boolean;
+function MenuItem({ icon, label, value, href, danger, onClick }: {
+  icon: React.ReactNode; label: string; value?: string; href?: string; danger?: boolean; onClick?: () => void;
 }) {
   const cls = `flex items-center gap-3 py-3.5 border-b border-gray-50 last:border-0 ${danger ? "text-red-400" : "text-gray-700"} hover:opacity-70 transition-opacity`;
   const inner = (
@@ -29,7 +29,8 @@ function MenuItem({ icon, label, value, href, danger }: {
       </svg>
     </>
   );
-  return href ? <Link href={href} className={cls}>{inner}</Link> : <button className={`w-full text-left ${cls}`}>{inner}</button>;
+  if (href) return <Link href={href} className={cls}>{inner}</Link>;
+  return <button onClick={onClick} className={`w-full text-left ${cls}`}>{inner}</button>;
 }
 
 export default function ProfilePage() {
@@ -156,7 +157,7 @@ export default function ProfilePage() {
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">其他</p>
           <MenuItem label="客服中心" icon={<svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>} />
           <MenuItem label="關於揪車" icon={<svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>} />
-          <MenuItem label="登出" danger
+          <MenuItem label="登出" danger onClick={handleLogout}
             icon={<svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>}
           />
         </div>

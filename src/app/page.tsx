@@ -9,9 +9,14 @@ export default function Home() {
   const [to, setTo] = useState("");
   const [date, setDate] = useState("");
 
+  const [loading, setLoading] = useState(false);
+
   const handleSearch = () => {
     if (!from || !to || !date) return;
-    router.push(`/results?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}`);
+    setLoading(true);
+    setTimeout(() => {
+      router.push(`/results?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}`);
+    }, 1000);
   };
 
   const today = new Date().toISOString().split("T")[0];
@@ -113,13 +118,25 @@ export default function Home() {
           {/* Search Button */}
           <button
             onClick={handleSearch}
-            disabled={!from || !to || !date}
+            disabled={!from || !to || !date || loading}
             className="w-full bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold py-4 rounded-xl shadow-md hover:from-green-700 hover:to-emerald-600 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-            </svg>
-            尋找順路車
+            {loading ? (
+              <>
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                搜尋中...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                </svg>
+                尋找順路車
+              </>
+            )}
           </button>
         </div>
       </div>

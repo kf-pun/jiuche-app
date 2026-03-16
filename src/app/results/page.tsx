@@ -1,9 +1,12 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState, useMemo } from "react";
 import { mockRides, Ride } from "@/lib/mockData";
 import Link from "next/link";
+
+type SortKey = "time" | "price" | "co2" | "rating";
+type GenderFilter = "all" | "female";
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -23,7 +26,6 @@ function RideCard({ ride }: { ride: Ride }) {
       onClick={() => router.push(`/results/${ride.id}`)}
       className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-left hover:border-green-300 hover:shadow-md active:scale-[0.99] transition-all"
     >
-      {/* Top row: avatar + name + rating + seats */}
       <div className="flex items-center gap-3 mb-3">
         <div className="w-11 h-11 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-base flex-shrink-0">
           {ride.driver.avatar}
@@ -41,10 +43,8 @@ function RideCard({ ride }: { ride: Ride }) {
         </div>
       </div>
 
-      {/* Divider */}
       <div className="border-t border-dashed border-gray-100 mb-3" />
 
-      {/* Route + time */}
       <div className="flex items-center gap-3 mb-3">
         <div className="flex flex-col items-center gap-1">
           <div className="w-2 h-2 rounded-full bg-green-500" />
@@ -63,7 +63,6 @@ function RideCard({ ride }: { ride: Ride }) {
         </div>
       </div>
 
-      {/* Tags */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs px-2.5 py-1 rounded-full font-medium">
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -82,20 +81,133 @@ function RideCard({ ride }: { ride: Ride }) {
   );
 }
 
+const femaleDriverIds = ["ride-002", "ride-004"];
+
+function FilterBar({
+  sort, setSort, gender, setGender, timeRange, setTimeRange,
+}: {
+  sort: SortKey; setSort: (v: SortKey) => void;
+  gender: GenderFilter; setGender: (v: GenderFilter) => void;
+  timeRange: string; setTimeRange: (v: string) => void;
+}) {
+  const sortOptions: { key: SortKey; label: string }[] = [
+    { key: "time", label: "最早出發" },
+    { key: "price", label: "最低價" },
+    { key: "co2", label: "最多減碳" },
+    { key: "rating", label: "最高評分" },
+  ];
+
+  return (
+    <div className="bg-white border-b border-gray-100 shadow-sm">
+      {/* Sort row */}
+      <div className="flex gap-2 px-4 py-2.5 overflow-x-auto no-scrollbar">
+        {sortOptions.map((o) => (
+          <button
+            key={o.key}
+            onClick={() => setSort(o.key)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+              sort === o.key
+                ? "bg-green-600 text-white shadow-sm"
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filter row */}
+      <div className="flex gap-2 px-4 pb-2.5 overflow-x-auto no-scrollbar">
+        {/* Time filter */}
+        <button
+          onClick={() => setTimeRange(timeRange === "morning" ? "all" : "morning")}
+          className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+            timeRange === "morning"
+              ? "bg-emerald-50 border-emerald-400 text-emerald-700"
+              : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+          }`}
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m8.66-10h-1M4.34 12h-1m15.07-6.07l-.71.71M5.64 18.36l-.71.71M18.36 18.36l-.71-.71M5.64 5.64l-.71-.71M12 7a5 5 0 100 10A5 5 0 0012 7z" />
+          </svg>
+          早班（07–09）
+        </button>
+
+        <button
+          onClick={() => setTimeRange(timeRange === "late" ? "all" : "late")}
+          className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+            timeRange === "late"
+              ? "bg-emerald-50 border-emerald-400 text-emerald-700"
+              : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+          }`}
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          晚班（09+）
+        </button>
+
+        {/* Gender filter */}
+        <button
+          onClick={() => setGender(gender === "female" ? "all" : "female")}
+          className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+            gender === "female"
+              ? "bg-pink-50 border-pink-400 text-pink-600"
+              : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+          }`}
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a5 5 0 100 10A5 5 0 0012 2zm0 10v4m-3 2h6" />
+          </svg>
+          女性司機
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ResultsContent() {
   const searchParams = useSearchParams();
   const from = searchParams.get("from") || "";
   const to = searchParams.get("to") || "";
   const date = searchParams.get("date") || "";
 
+  const [sort, setSort] = useState<SortKey>("time");
+  const [gender, setGender] = useState<GenderFilter>("all");
+  const [timeRange, setTimeRange] = useState<string>("all");
+
   const formatted = date
     ? new Date(date + "T00:00:00").toLocaleDateString("zh-TW", { month: "long", day: "numeric", weekday: "short" })
     : "";
 
+  const filtered = useMemo(() => {
+    let list = [...mockRides];
+
+    if (gender === "female") {
+      list = list.filter((r) => femaleDriverIds.includes(r.id));
+    }
+    if (timeRange === "morning") {
+      list = list.filter((r) => r.departureTime < "09:00");
+    }
+    if (timeRange === "late") {
+      list = list.filter((r) => r.departureTime >= "09:00");
+    }
+
+    list.sort((a, b) => {
+      if (sort === "time") return a.departureTime.localeCompare(b.departureTime);
+      if (sort === "price") return a.price - b.price;
+      if (sort === "co2") return b.co2Saved - a.co2Saved;
+      if (sort === "rating") return b.driver.rating - a.driver.rating;
+      return 0;
+    });
+
+    return list;
+  }, [sort, gender, timeRange]);
+
   return (
     <div className="flex flex-col min-h-full">
       {/* Header */}
-      <div className="bg-gradient-to-br from-green-600 to-emerald-500 px-5 pt-12 pb-6">
+      <div className="bg-gradient-to-br from-green-600 to-emerald-500 px-5 pt-12 pb-5">
         <Link href="/" className="flex items-center gap-1.5 text-white/80 text-sm mb-4 hover:text-white transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -113,31 +225,54 @@ function ResultsContent() {
             <p className="text-white/70 text-sm">{to || "目的地"}</p>
           </div>
         </div>
-        <p className="text-white/60 text-xs mt-3">{formatted}</p>
+        <p className="text-white/60 text-xs mt-2">{formatted}</p>
       </div>
 
+      {/* Filter bar */}
+      <FilterBar
+        sort={sort} setSort={setSort}
+        gender={gender} setGender={setGender}
+        timeRange={timeRange} setTimeRange={setTimeRange}
+      />
+
       {/* Result count */}
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 pt-3 pb-2 flex items-center justify-between">
         <p className="text-sm text-gray-500">
-          找到 <span className="font-bold text-green-600">{mockRides.length}</span> 筆順路行程
+          找到 <span className="font-bold text-green-600">{filtered.length}</span> 筆順路行程
         </p>
+        {(gender !== "all" || timeRange !== "all") && (
+          <button
+            onClick={() => { setGender("all"); setTimeRange("all"); }}
+            className="text-xs text-gray-400 hover:text-red-400 transition-colors flex items-center gap-1"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            清除篩選
+          </button>
+        )}
       </div>
 
       {/* Ride list */}
       <div className="px-4 pb-6 flex flex-col gap-3">
-        {mockRides.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mb-4">
               <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
               </svg>
             </div>
-            <p className="text-gray-500 font-medium">找不到順路行程</p>
-            <p className="text-gray-400 text-sm mt-1">試試其他日期或地點</p>
-            <Link href="/" className="mt-4 text-green-600 text-sm font-medium">重新搜尋</Link>
+            <p className="text-gray-500 font-medium">沒有符合條件的行程</p>
+            <p className="text-gray-400 text-sm mt-1">試試調整篩選條件</p>
+            <button
+              onClick={() => { setGender("all"); setTimeRange("all"); }}
+              className="mt-3 text-green-600 text-sm font-medium"
+            >
+              清除篩選
+            </button>
           </div>
         ) : (
-          mockRides.map((ride) => <RideCard key={ride.id} ride={ride} />)
+          filtered.map((ride) => <RideCard key={ride.id} ride={ride} />)
         )}
       </div>
     </div>

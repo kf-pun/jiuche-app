@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AuthGuard from "@/components/AuthGuard";
 
 type TripStatus = "confirmed" | "pending" | "completed" | "cancelled";
 
@@ -187,7 +188,7 @@ function TripCard({ trip }: { trip: Trip }) {
   );
 }
 
-export default function TripsPage() {
+function TripsPage() {
   const [tab, setTab] = useState<"upcoming" | "history">("upcoming");
 
   const upcoming = mockTrips.filter((t) => t.status === "confirmed" || t.status === "pending");
@@ -262,4 +263,8 @@ export default function TripsPage() {
       </div>
     </div>
   );
+}
+
+export default function ProtectedTripsPage() {
+  return <AuthGuard><TripsPage /></AuthGuard>;
 }

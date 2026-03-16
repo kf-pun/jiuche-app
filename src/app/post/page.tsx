@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import AuthGuard from "@/components/AuthGuard";
 
 const timeSlots = ["07:00", "07:30", "08:00", "08:15", "08:30", "09:00", "09:30", "17:30", "18:00", "18:30", "19:00"];
 
-export default function PostRidePage() {
+function PostRidePage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -327,4 +328,8 @@ export default function PostRidePage() {
       </div>
     </div>
   );
+}
+
+export default function ProtectedPostRidePage() {
+  return <AuthGuard><PostRidePage /></AuthGuard>;
 }

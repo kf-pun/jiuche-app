@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import AuthGuard from "@/components/AuthGuard";
 
 type NotiType = "booking" | "payment" | "reminder" | "system" | "review" | "esg";
 
@@ -54,7 +55,7 @@ const typeConfig: Record<NotiType, { bg: string; icon: React.ReactNode }> = {
   },
 };
 
-export default function NotificationsPage() {
+function NotificationsPage() {
   const [notis, setNotis] = useState<Notification[]>(INITIAL_NOTIS);
   const unreadCount = notis.filter((n) => !n.read).length;
 
@@ -128,4 +129,8 @@ export default function NotificationsPage() {
       </div>
     </div>
   );
+}
+
+export default function ProtectedNotificationsPage() {
+  return <AuthGuard><NotificationsPage /></AuthGuard>;
 }

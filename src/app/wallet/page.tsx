@@ -1,8 +1,8 @@
 "use client";
 
 import { useAuth } from "@/lib/authContext";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import AuthGuard from "@/components/AuthGuard";
 
 type TxType = "topup" | "pay" | "receive" | "refund";
 
@@ -50,18 +50,10 @@ const txConfig: Record<TxType, { icon: React.ReactNode; color: string; bg: strin
   },
 };
 
-export default function WalletPage() {
-  const { user, isLoggedIn } = useAuth();
-  const router = useRouter();
+function WalletPage() {
+  const { user } = useAuth();
 
-  if (!isLoggedIn || !user) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-full px-6 py-20">
-        <p className="text-gray-500 font-medium">請先登入</p>
-        <Link href="/auth/login" className="mt-4 text-green-600 text-sm font-medium">前往登入</Link>
-      </div>
-    );
-  }
+  if (!user) return null;
 
   const income  = mockTransactions.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
   const expense = mockTransactions.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0);
@@ -153,4 +145,8 @@ export default function WalletPage() {
       </div>
     </div>
   );
+}
+
+export default function ProtectedWalletPage() {
+  return <AuthGuard><WalletPage /></AuthGuard>;
 }

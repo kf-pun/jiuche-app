@@ -4,6 +4,12 @@
 策略：前端優先、Mobile-First、Mock Data 展示完整流程。
 目前階段：功能優化中 → 最後再部署 Vercel。
 
+## 開發準則（強制執行）
+1. **開發前必須有規格書**：任何功能開發都必須以對應的規格書為出發點，沒有規格書不得進行開發。
+2. **開發完必須更新規格書**：功能完成後，必須回頭更新規格書，確保內容與實際功能一致。
+3. 規格書統一放在 `/docs/specs/` 目錄，使用 `/spec-writer` Skill 撰寫。
+4. **詢問待開發功能時**：必須讀取 `/docs/specs/BACKLOG.md`，以此為準回答，不得憑記憶回覆。
+
 ## 技術棧
 - Next.js 15 (App Router) + TypeScript + Tailwind CSS v4
 - 套件管理：npm
@@ -90,7 +96,7 @@ addBalance(amount)       // 儲值
 ## 待優化項目（當前階段）
 > 部署之前先把體驗拉滿
 
-- [ ] 待討論與執行
+詳見 `/docs/specs/BACKLOG.md`，依優先度排序管理。
 
 ## 部署（最後執行）
 ```bash

@@ -1,101 +1,124 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createClient } from "@/lib/supabase/client";
+import type { UserRow } from "@/types/database";
 
 export interface User {
+  id: string;
   name: string;
   phone: string;
   company: string;
-  avatar: string;       // 姓名首字
+  avatar: string;
   rating: number;
   totalRides: number;
   isDriver: boolean;
   carModel: string;
   carPlate: string;
   carColor: string;
-  balance: number;      // NT$
-  co2Total: number;     // kg，累計減碳
+  balance: number;
+  co2Total: number;
   joinedAt: string;
 }
 
-const DEFAULT_USER: User = {
-  name: "王小明",
-  phone: "0912-345-678",
-  company: "台積電",
-  avatar: "王",
-  rating: 4.8,
-  totalRides: 23,
-  isDriver: true,
-  carModel: "Toyota Camry",
-  carPlate: "ABC-1234",
-  carColor: "銀色",
-  balance: 1250,
-  co2Total: 28.4,
-  joinedAt: "2025-09-01",
-};
+function rowToUser(row: UserRow): User {
+  return {
+    id: row.id,
+    name: row.name,
+    phone: row.phone,
+    company: row.company,
+    avatar: row.name[0] || "?",
+    rating: row.rating,
+    totalRides: row.rating_count,
+    isDriver: row.is_driver,
+    carModel: row.vehicle_type || "",
+    carPlate: row.vehicle_plate || "",
+    carColor: row.vehicle_color || "",
+    balance: row.balance,
+    co2Total: Number(row.co2_total),
+    joinedAt: row.created_at.slice(0, 10),
+  };
+}
 
 interface AuthContextType {
   user: User | null;
   isLoggedIn: boolean;
-  login: (phone: string, userData?: Partial<User>) => void;
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
   deductBalance: (amount: number) => boolean;
   addBalance: (amount: number) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const supabase = createClient();
+
+  const fetchUser = useCallback(async (userId: string) => {
+    const { data } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .single();
+    setUser(data ? rowToUser(data as UserRow) : null);
+  }, [supabase]);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("jiuche_user");
-      if (stored) setUser(JSON.parse(stored));
-    } catch {}
-  }, []);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) fetchUser(session.user.id);
+    });
 
-  const persist = (u: User | null) => {
-    if (u) localStorage.setItem("jiuche_user", JSON.stringify(u));
-    else localStorage.removeItem("jiuche_user");
-  };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) fetchUser(session.user.id);
+      else setUser(null);
+    });
 
-  const login = (phone: string, userData?: Partial<User>) => {
-    const u: User = { ...DEFAULT_USER, phone, ...userData };
-    setUser(u);
-    persist(u);
+    return () => subscription.unsubscribe();
+  }, [fetchUser, supabase]);
+
+  const refreshUser = async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) await fetchUser(authUser.id);
   };
 
   const logout = () => {
+    supabase.auth.signOut();
     setUser(null);
-    persist(null);
   };
 
   const updateUser = (data: Partial<User>) => {
     if (!user) return;
     const updated = { ...user, ...data };
     setUser(updated);
-    persist(updated);
+    supabase.from("users").update({
+      name: updated.name,
+      company: updated.company,
+      is_driver: updated.isDriver,
+      vehicle_type: updated.carModel || null,
+      vehicle_plate: updated.carPlate || null,
+      vehicle_color: updated.carColor || null,
+    }).eq("id", user.id);
   };
 
   const deductBalance = (amount: number): boolean => {
     if (!user || user.balance < amount) return false;
-    const updated = { ...user, balance: user.balance - amount };
-    setUser(updated);
-    persist(updated);
+    const newBalance = user.balance - amount;
+    setUser({ ...user, balance: newBalance });
+    supabase.from("users").update({ balance: newBalance }).eq("id", user.id);
     return true;
   };
 
   const addBalance = (amount: number) => {
     if (!user) return;
-    const updated = { ...user, balance: user.balance + amount };
-    setUser(updated);
-    persist(updated);
+    const newBalance = user.balance + amount;
+    setUser({ ...user, balance: newBalance });
+    supabase.from("users").update({ balance: newBalance }).eq("id", user.id);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, logout, updateUser, deductBalance, addBalance }}>
+    <AuthContext.Provider value={{ user, isLoggedIn: !!user, logout, updateUser, deductBalance, addBalance, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

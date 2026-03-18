@@ -3,13 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
-import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+
+const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_OTP = "888888";
 
 type Step = "phone" | "otp";
 
+function toE164(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("0")) return "+886" + digits.slice(1);
+  return "+" + digits;
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { refreshUser } = useAuth();
+  const supabase = createClient();
 
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
@@ -19,21 +29,31 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
 
-  const MOCK_OTP = "888888";
+  const startCountdown = () => {
+    setCountdown(60);
+    const timer = setInterval(() => {
+      setCountdown((c) => { if (c <= 1) { clearInterval(timer); return 0; } return c - 1; });
+    }, 1000);
+  };
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     const cleaned = phone.replace(/\D/g, "");
     if (cleaned.length < 9) { setError("請輸入正確的手機號碼"); return; }
     setError("");
-    setSending(true);
-    setTimeout(() => {
-      setSending(false);
+
+    if (DEV_MODE) {
       setStep("otp");
-      setCountdown(60);
-      const timer = setInterval(() => {
-        setCountdown((c) => { if (c <= 1) { clearInterval(timer); return 0; } return c - 1; });
-      }, 1000);
-    }, 1000);
+      return;
+    }
+
+    setSending(true);
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      phone: toE164(phone),
+    });
+    setSending(false);
+    if (otpError) { setError("發送失敗，請稍後再試"); return; }
+    setStep("otp");
+    startCountdown();
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -41,9 +61,7 @@ export default function LoginPage() {
     const next = [...otp];
     next[index] = value.slice(-1);
     setOtp(next);
-    if (value && index < 5) {
-      document.getElementById(`otp-${index + 1}`)?.focus();
-    }
+    if (value && index < 5) document.getElementById(`otp-${index + 1}`)?.focus();
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -52,24 +70,62 @@ export default function LoginPage() {
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const code = otp.join("");
     if (code.length < 6) { setError("請輸入完整的驗證碼"); return; }
     setError("");
     setVerifying(true);
-    setTimeout(() => {
-      setVerifying(false);
-      if (code === MOCK_OTP) {
-        login(phone);
-        const redirect = sessionStorage.getItem("jiuche_redirect") || "/";
-        sessionStorage.removeItem("jiuche_redirect");
-        router.replace(redirect);
-      } else {
-        setError("驗證碼錯誤，請重新輸入（提示：888888）");
+
+    let userId: string;
+
+    if (DEV_MODE) {
+      if (code !== DEV_OTP) {
+        setVerifying(false);
+        setError(`開發模式：請輸入 ${DEV_OTP}`);
         setOtp(["", "", "", "", "", ""]);
         document.getElementById("otp-0")?.focus();
+        return;
       }
-    }, 1000);
+      const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously();
+      if (anonError || !anonData.user) {
+        setVerifying(false);
+        setError("開發模式登入失敗，請確認 Supabase 已開啟 Anonymous sign-in");
+        return;
+      }
+      userId = anonData.user.id;
+    } else {
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        phone: toE164(phone),
+        token: code,
+        type: "sms",
+      });
+      if (verifyError || !data.user) {
+        setVerifying(false);
+        setError("驗證碼錯誤，請重新輸入");
+        setOtp(["", "", "", "", "", ""]);
+        document.getElementById("otp-0")?.focus();
+        return;
+      }
+      userId = data.user.id;
+    }
+
+    // 判斷新 / 舊用戶
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", userId)
+      .single();
+
+    setVerifying(false);
+
+    if (existingUser) {
+      await refreshUser();
+      const redirect = sessionStorage.getItem("jiuche_redirect") || "/";
+      sessionStorage.removeItem("jiuche_redirect");
+      router.replace(redirect);
+    } else {
+      router.replace(`/auth/register?phone=${encodeURIComponent(phone)}`);
+    }
   };
 
   return (
@@ -122,14 +178,12 @@ export default function LoginPage() {
               ) : "發送驗證碼"}
             </button>
 
-            {/* Divider */}
             <div className="flex items-center gap-3 my-5">
               <div className="flex-1 border-t border-gray-200" />
               <span className="text-xs text-gray-400">或使用社群帳號登入</span>
               <div className="flex-1 border-t border-gray-200" />
             </div>
 
-            {/* Google login mock */}
             <button className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-3 shadow-sm hover:bg-gray-50 active:scale-95 transition-all">
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -159,11 +213,15 @@ export default function LoginPage() {
             </button>
 
             <h2 className="text-xl font-bold text-gray-800 mb-1">輸入驗證碼</h2>
-            <p className="text-gray-400 text-sm mb-1">已發送至 {phone}</p>
-            <p className="text-green-600 text-xs font-medium mb-6">（Demo 驗證碼：888888）</p>
+            {DEV_MODE ? (
+              <p className="text-amber-500 text-xs font-medium mb-6 bg-amber-50 px-3 py-2 rounded-lg">
+                🛠 開發模式 — 輸入 {DEV_OTP}
+              </p>
+            ) : (
+              <p className="text-gray-400 text-sm mb-6">已發送簡訊至 {phone}</p>
+            )}
 
-            {/* OTP boxes */}
-            <div className="flex gap-2.5 mb-4">
+            <div className="flex justify-between gap-2 mb-4">
               {otp.map((digit, i) => (
                 <input
                   key={i}
@@ -174,7 +232,7 @@ export default function LoginPage() {
                   value={digit}
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                  className={`flex-1 h-14 text-center text-xl font-bold rounded-xl border-2 outline-none transition-colors ${
+                  className={`w-11 h-12 text-center text-xl font-bold rounded-xl border-2 outline-none transition-colors ${
                     digit ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 bg-white text-gray-700"
                   } focus:border-green-400`}
                 />

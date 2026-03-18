@@ -47,14 +47,21 @@
 | 17 | 發布成功 | `/post/success` | [spec-17-post-success.md](./spec-17-post-success.md) | 已確認 |
 | 18 | 儲值成功 | `/wallet/topup/success` | ↳ 合併至 spec-10-wallet-topup.md | 已確認 |
 
+### 🔵 後台管理系統 — Sprint 6+（Desktop-First）
+
+| 優先 | 功能名稱 | 路由 | 規格書 | 狀態 |
+|------|----------|------|--------|------|
+| 19 | 後台管理系統 | `/admin/*` | spec-18-admin.md（待撰寫，實作完成後補） | 待撰寫 |
+
 ---
 
 ## 共用元件
 
 | 元件 | 說明 | 相關規格書 |
 |------|------|------------|
-| `BottomNav` | 底部導覽列（`/auth/*` 時隱藏） | 所有頁面 |
+| `BottomNav` | 底部導覽列（`/auth/*` 與 `/admin/*` 時隱藏） | 所有前台頁面 |
 | `AuthGuard` | 登入保護（未登入自動導向登入頁） | spec-04-login.md |
+| `AdminGuard` | 後台保護（非 admin role → 前台首頁，Sprint 6 新增） | spec-18-admin.md |
 
 ---
 

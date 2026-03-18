@@ -1,6 +1,6 @@
 # 揪車 JiuChe — 開發 Backlog 與時程規劃
 
-**更新日期：** 2026-03-18（最後更新：Sprint 6 全部完成）
+**更新日期：** 2026-03-18（最後更新：Sprint 7 全部完成）
 **目標上線：** 2026-05-12（因加入後台系統，延後一週）
 
 ---
@@ -134,3 +134,7 @@ May 12 ■    Sprint 9  後台 P3（B2B）+ 部署
 | S3-2 搜尋結果查詢真實 rides | 2026-03-18 | `src/actions/rides.ts` searchRides()；起迄點模糊搜尋 + 日期範圍（台灣時區）；早/晚班篩選；排序（時間/價格/CO₂/評分） |
 | S4-1 座位數選擇 + 預訂寫入 DB | 2026-03-18 | `getRideDetail()` 從 DB 取詳情；詳情頁座位 +/− 選擇器；`src/actions/bookings.ts` createBooking()：寫 bookings + 扣 available_seats + 寫 wallet_transactions(payment) + 更新 balance；confirm 頁改呼叫 createBooking() + refreshUser() |
 | S4-2 錢包餘額真實持久化 | 2026-03-18 | `src/actions/wallet.ts` createTopup() + getWalletTransactions()；topup 頁改呼叫 createTopup()；wallet 頁改載入真實交易紀錄（本月收支按月篩選） |
+| S5–S6 資料一致性 + 後台 P0 | 2026-03-18 | 評價/通知/ESG 真實資料；後台 Layout + AdminGuard + Dashboard + 會員管理 + 訂單管理 |
+| S7-1 行程管理 | 2026-03-18 | `src/actions/admin/rides.ts`；列表/詳情/強制取消（批次退款 + 通知） |
+| S7-2 金流管理 | 2026-03-18 | `src/actions/admin/transactions.ts`；月統計/列表/補償 Modal/CSV 匯出（UTF-8 BOM） |
+| S7-3 ECPay 儲值串接 | 2026-03-18 | `createEcpayOrder()` SHA256 CheckMacValue；`/api/ecpay/callback` webhook；`/api/ecpay/result` client redirect；信用卡/ATM/超商走 ECPay，LINE Pay 保留舊流程 |

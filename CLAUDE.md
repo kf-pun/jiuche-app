@@ -2,7 +2,7 @@
 
 企業 ESG 減碳共乘平台 Prototype。
 策略：前端優先、Mobile-First → 現階段串接真實 Supabase 後端。
-目前階段：Sprint 4 — 預訂與錢包真實化。
+目前階段：Sprint 5 完成 — 進入 Sprint 6（後台管理系統建置）。
 後台計畫：方向 A（同專案 `/admin` 路由），Sprint 6 開始建置，寬版 Layout，電腦操作。
 
 ## 開發準則（強制執行）
@@ -125,8 +125,9 @@ addBalance(amount)       // 儲值（Sprint 4 改走 wallet_transactions）
 ## 目前進度
 - **Sprint 1–2 完成**：Supabase 建置、Schema、Auth 全流程（OTP dev bypass + 新用戶註冊 + Session）
 - **Sprint 3 完成**：S3-1 發布共乘寫入 rides 表、S3-2 搜尋查詢真實資料（起迄模糊 + 日期時區 + 篩選排序）
-- **Sprint 4（進行中）**：S4-1 座位預訂寫入 DB、S4-2 錢包餘額真實持久化
-- **後台計畫**：Sprint 6（Apr 21）開始，P0 → P3 分四個 Sprint 交付，目標上線 5/12
+- **Sprint 4 完成**：S4-1 座位預訂寫入 DB（createBooking + 扣座位 + 付款交易）、S4-2 錢包餘額真實持久化
+- **Sprint 5 完成**：S5-1 我的行程從真實 DB、S5-2 評價持久化 + 司機評分更新、S5-3 通知持久化 + BottomNav 未讀點、S5-4 ESG 數據動態計算
+- **下一步 Sprint 6**：後台管理系統（`/admin` 路由），P0 架構 + 會員/訂單管理
 - 詳細任務清單：`/docs/specs/BACKLOG.md`
 
 ---

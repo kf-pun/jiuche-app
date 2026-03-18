@@ -16,7 +16,7 @@ export default function BottomNav() {
     getUnreadNotificationCount().then(setUnreadCount);
   }, [isLoggedIn, pathname]);
 
-  if (pathname.startsWith("/auth")) return null;
+  if (pathname.startsWith("/auth") || pathname.startsWith("/admin")) return null;
 
   const isActive = (href: string) => pathname === href;
 

@@ -18,6 +18,8 @@ export interface UserRow {
   co2_total: number
   rating: number
   rating_count: number
+  role: 'user' | 'admin'
+  is_active: boolean
   created_at: string
 }
 

@@ -51,7 +51,10 @@
 
 | 優先 | 功能名稱 | 路由 | 規格書 | 狀態 |
 |------|----------|------|--------|------|
-| 19 | 後台管理系統 | `/admin/*` | spec-18-admin.md（待撰寫，實作完成後補） | 待撰寫 |
+| 19 | 後台基礎架構（Layout + AdminGuard） | `/admin/*` | [spec-admin-01-layout.md](./spec-admin-01-layout.md) | 已確認 |
+| 20 | 後台 Dashboard 總覽 | `/admin` | [spec-admin-02-dashboard.md](./spec-admin-02-dashboard.md) | 已確認 |
+| 21 | 後台會員管理 | `/admin/users` | [spec-admin-03-users.md](./spec-admin-03-users.md) | 已確認 |
+| 22 | 後台訂單管理 | `/admin/bookings` | [spec-admin-04-bookings.md](./spec-admin-04-bookings.md) | 已確認 |
 
 ---
 
@@ -61,7 +64,7 @@
 |------|------|------------|
 | `BottomNav` | 底部導覽列（`/auth/*` 與 `/admin/*` 時隱藏） | 所有前台頁面 |
 | `AuthGuard` | 登入保護（未登入自動導向登入頁） | spec-04-login.md |
-| `AdminGuard` | 後台保護（非 admin role → 前台首頁，Sprint 6 新增） | spec-18-admin.md |
+| `AdminGuard` | 後台保護（非 admin role → 前台首頁，Sprint 6 新增） | spec-admin-01-layout.md |
 
 ---
 

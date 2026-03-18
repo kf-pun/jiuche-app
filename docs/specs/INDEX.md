@@ -62,6 +62,13 @@
 | 27 | 後台通知管理 | `/admin/notifications` | [spec-admin-09-notifications.md](./spec-admin-09-notifications.md) | 已確認 |
 | 28 | 後台 ESG 報告 | `/admin/esg` | [spec-admin-10-esg.md](./spec-admin-10-esg.md) | 已確認 |
 
+### 🔵 後台管理系統 — Sprint 9（B2B）
+
+| 優先 | 功能名稱 | 路由 | 規格書 | 狀態 |
+|------|----------|------|--------|------|
+| 32 | 後台企業管理（B2B） | `/admin/companies` | [spec-admin-11-companies.md](./spec-admin-11-companies.md) | 已確認 |
+| 33 | Google OAuth 串接 | `/auth/login` + `/auth/callback` | [spec-21-google-oauth.md](./spec-21-google-oauth.md) | 已確認 |
+
 ### 🟤 前台補完 — Sprint 8
 
 | 優先 | 功能名稱 | 路由 | 規格書 | 狀態 |

@@ -2,7 +2,7 @@
 
 企業 ESG 減碳共乘平台 Prototype。
 策略：前端優先、Mobile-First → 現階段串接真實 Supabase 後端。
-目前階段：Sprint 5 完成 — 進入 Sprint 6（後台管理系統建置）。
+目前階段：Sprint 9 完成 — 全專案功能實作完畢，待 Google OAuth GCP 設定 + Vercel 正式部署。
 後台計畫：方向 A（同專案 `/admin` 路由），Sprint 6 開始建置，寬版 Layout，電腦操作。
 
 ## 開發準則（強制執行）
@@ -130,7 +130,8 @@ addBalance(amount)       // 儲值（Sprint 4 改走 wallet_transactions）
 - **Sprint 6 完成**：後台 P0 架構（AdminGuard + Layout）、Dashboard、會員管理、訂單管理
 - **Sprint 7 完成**：行程管理、金流管理、ECPay 儲值串接
 - **Sprint 8 完成**：評價管理、通知管理、ESG 報告、地點自動完成、司機評價列表、UX 補完
-- **下一步 Sprint 9**：企業管理（B2B）、Google OAuth、Vercel 部署、E2E 驗收
+- **Sprint 9 完成**：S9-1 企業管理（/admin/companies）、S9-2 Google OAuth（/auth/callback）、S9-3 Vercel 設定（vercel.json）、S9-4 E2E 靜態驗收（24 TC，0 FAIL）
+- **待完成（人工操作）**：GCP OAuth 2.0 Client 設定 + Supabase Google Provider 啟用 + Vercel 部署（`vercel --prod`）
 - 詳細任務清單：`/docs/specs/BACKLOG.md`
 
 ---

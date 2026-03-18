@@ -144,3 +144,7 @@ May 12 ■    Sprint 9  後台 P3（B2B）+ 部署
 | S8-4 地點自動完成 | 2026-03-18 | `PlacesAutocomplete` 元件 + `/api/places` 代理路由；首頁 + 發布行程起訖點欄位套用；無 API Key 自動降級 |
 | S8-5 司機歷史評價列表 | 2026-03-18 | `getDriverReviews()` in rides.ts；行程詳情頁底部顯示最新 5 筆，可展開全部；乘客姓名匿名（姓氏 + **） |
 | S8-6 UX 補完 | 2026-03-18 | 歷史行程空狀態 SVG 插圖；發布行程欄位驗證紅字（blur 觸發）；首頁個人化搜尋記錄（localStorage）；訂單號 sessionStorage 持久化；BottomNav aria-label 全補 |
+| S9-1 企業管理（B2B） | 2026-03-18 | `src/actions/admin/companies.ts`；企業列表（以 users.company 分組）+ 詳情頁 + CSV 匯出（UTF-8 BOM）；導覽列啟用「企業管理」；規格書 spec-admin-11-companies.md |
+| S9-2 Google OAuth 串接 | 2026-03-18 | `src/app/auth/callback/route.ts`；登入頁 Google 按鈕串接 signInWithOAuth + loading 狀態 + oauth_failed 錯誤顯示；規格書 spec-21-google-oauth.md |
+| S9-3 Vercel 部署設定 | 2026-03-18 | `vercel.json` 新增；`.env.local.example` 補齊 NEXT_PUBLIC_SITE_URL / Google OAuth / ECPay / Google Maps 所有變數說明 |
+| S9-4 E2E 靜態驗收 | 2026-03-18 | 24 條 TC 靜態程式碼分析，22 PASS / 2 WARN / 0 FAIL；build 成功；Google OAuth 需人工設定 GCP OAuth Client 才能完整驗收 |

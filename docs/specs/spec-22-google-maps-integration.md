@@ -1,6 +1,6 @@
 # Google Maps 深度整合 功能規格書
 
-**版本：** v1.2
+**版本：** v1.3
 **日期：** 2026-03-18
 **狀態：** 已確認
 
@@ -41,8 +41,10 @@
 - 預訂確認頁：費用拆分顯示（油資 + 平台服務費）
 - `rides` 表新增地圖相關欄位
 - `bookings` 表新增 `service_fee` 欄位
+- `system_config` 表新增（油價 + 服務費分級設定）
 - DB migration：`supabase/migrations/002_add_map_fields.sql`
 - API 代理路由：`/api/directions`、`/api/geocode`
+- Vercel Cron Job：每週四抓取台灣中油最新油價並更新 `system_config`（`/api/cron/update-fuel-price`）
 
 ---
 
@@ -54,27 +56,29 @@
 ### 油資上限計算公式
 
 ```
-油資上限（每位乘客）= (距離 km × 車型油耗 × 油價) ÷ 乘客數 + 過路費分攤
-油價預設：32 元/L（後台可調整）
+油資上限（每位乘客）= (距離 km × 車型油耗 × 當週油價) ÷ 乘客數 + 過路費分攤
+當週油價：每週四自動從台灣中油（CPC）官網抓取，依車型類別預設油號讀取
 車型油耗：依司機車輛資料查官方油耗表（見下方）
-範例：10km，Toyota Camry，2 人共乘 → (10 × 0.095 × 32) ÷ 2 = $15.2 → 取整數 $15
+範例：10km，Toyota Camry（95無鉛），油價 $32.5/L，2 人共乘
+      → (10 × 0.095 × 32.5) ÷ 2 = $15.4 → 取整數 $15
 ```
 
-**車型油耗對照表（市區修正值，內建於系統）**
+**車型油耗對照表（市區修正值 + 預設油號，內建於系統）**
 
-| 車型類別 | 代表車款 | 市區油耗（L/km） |
-|---------|---------|----------------|
-| 小型轎車 | Yaris / Fit / Vios | 0.068 |
-| 中型轎車 | Camry / Altis / Mazda 3 | 0.095 |
-| 大型轎車 | Accord / Passat | 0.110 |
-| SUV（小） | HR-V / Kicks | 0.095 |
-| SUV（中） | RAV4 / CRV / Tiguan | 0.109 |
-| SUV（大） | Highlander / Kodiaq | 0.130 |
-| MPV | Sienna / Carnival | 0.127 |
-| 電動車 | Tesla / BYD | 0（不計油耗） |
+| 車型類別 | 代表車款 | 市區油耗（L/km） | 預設油號 |
+|---------|---------|----------------|---------|
+| 小型轎車 | Yaris / Fit / Vios | 0.068 | 95 無鉛 |
+| 中型轎車 | Camry / Altis / Mazda 3 | 0.095 | 95 無鉛 |
+| 大型轎車 | Accord / Passat | 0.110 | 98 無鉛 |
+| SUV（小） | HR-V / Kicks | 0.095 | 95 無鉛 |
+| SUV（中） | RAV4 / CRV / Tiguan | 0.109 | 95 無鉛 |
+| SUV（大） | Highlander / Kodiaq | 0.130 | 98 無鉛 |
+| MPV | Sienna / Carnival | 0.127 | 95 無鉛 |
+| 電動車 | Tesla / BYD | 0（不計油耗） | N/A |
 
 > 資料來源：交通部能源局車輛油耗資訊網（ecocar.artc.org.tw），取官方值 × 1.15 市區修正係數。
-> 司機在「個人資料 → 車輛設定」選擇車型類別，系統自動帶入油耗，不開放手動輸入。
+> 司機在「個人資料 → 車輛設定」選擇車型類別，系統自動帶入油耗與油號，均不開放手動修改。
+> 油號依車型類別固定預設，避免司機選高油號多報油資（每趟差額約 $2–7）。
 
 ### 費用角色分配
 
@@ -213,6 +217,22 @@
 | `subscription_active` | BOOLEAN | 企業訂閱是否有效（預設 false） |
 | `subscription_expires_at` | TIMESTAMPTZ | 訂閱到期時間（可為 NULL） |
 
+### 新增表（`system_config`）
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `key` | TEXT PRIMARY KEY | 設定鍵（如 `fuel_price_92`、`fuel_price_95`、`fuel_price_98`） |
+| `value` | TEXT | 設定值（油價以字串儲存，如 `"30.3"`） |
+| `updated_at` | TIMESTAMPTZ | 最後更新時間 |
+
+初始資料列：
+- `fuel_price_92` → `"30.3"`
+- `fuel_price_95` → `"32.5"`
+- `fuel_price_98` → `"34.5"`
+- `service_fee_tier1` → `"10"`（0–10 km）
+- `service_fee_tier2` → `"15"`（11–30 km）
+- `service_fee_tier3` → `"20"`（>30 km）
+
 Migration 檔：`supabase/migrations/002_add_map_fields.sql`
 
 ### 新增 API 代理路由
@@ -242,8 +262,9 @@ Migration 檔：`supabase/migrations/002_add_map_fields.sql`
 ## 9. 備註
 
 - 車型油耗數值來源：交通部能源局 ecocar.artc.org.tw，官方值 × 1.15 市區修正係數
-- 司機不得手動修改油耗，須在「個人資料 → 車輛設定」選擇車型類別（8 種）
-- 油價（$32/L）為後台預設值，可依市場浮動調整
+- 司機不得手動修改油耗與油號，須在「個人資料 → 車輛設定」選擇車型類別（8 種），系統自動帶入
+- 油號依車型類別固定預設（小/中型 → 95；大型/大 SUV → 98；電動車 → N/A），防止司機選高油號多報油資
+- 油價每週四自動從台灣中油（CPC）官網爬取，存入 `system_config` 表（`fuel_price_92/95/98`）；初始手動填值
 - 平台服務費分三級：$10（≤10km）/ $15（11–30km）/ $20（>30km），後台可調整金額與分界
 - 企業訂閱管理由後台 `/admin/companies` 操作（`subscription_active` 開關）
 - Directions API 計費：每 1,000 次請求約 $5 USD；發布行程與行程詳情各呼叫一次

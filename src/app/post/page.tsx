@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthGuard from "@/components/AuthGuard";
 import { createRide } from "@/actions/rides";
+import PlacesAutocomplete from "@/components/PlacesAutocomplete";
 
 const timeSlots = ["07:00", "07:30", "08:00", "08:15", "08:30", "09:00", "09:30", "17:30", "18:00", "18:30", "19:00"];
 
@@ -25,6 +26,11 @@ function PostRidePage() {
     notes: "",
     recurring: false,
   });
+
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const touch = (key: string) => setTouched((prev) => ({ ...prev, [key]: true }));
+  const fieldErr = (key: string, invalid: boolean) =>
+    touched[key] && invalid ? "block text-red-500 text-xs mt-1" : "hidden";
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -95,34 +101,38 @@ function PostRidePage() {
 
               {/* From */}
               <div>
-                <label className="text-xs text-gray-500 font-medium mb-1 block">出發地</label>
-                <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
-                  <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                  <input
-                    type="text"
-                    placeholder="輸入出發地點"
+                <label className="text-xs text-gray-500 font-medium mb-1 block" htmlFor="post-from">出發地</label>
+                <div className={`flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border transition-colors ${touched.from && !form.from ? "border-red-300" : "border-gray-100 focus-within:border-green-400"}`}>
+                  <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" aria-hidden="true" />
+                  <PlacesAutocomplete
+                    id="post-from"
                     value={form.from}
-                    onChange={(e) => set("from", e.target.value)}
-                    className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
+                    onChange={(v) => set("from", v)}
+                    placeholder="輸入出發地點"
+                    aria-label="出發地"
+                    className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none w-full"
                   />
                 </div>
+                <span className={fieldErr("from", !form.from)}>⚠ 請填入出發地</span>
               </div>
 
               {/* To */}
               <div>
-                <label className="text-xs text-gray-500 font-medium mb-1 block">目的地</label>
-                <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
-                  <svg className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <label className="text-xs text-gray-500 font-medium mb-1 block" htmlFor="post-to">目的地</label>
+                <div className={`flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border transition-colors ${touched.to && !form.to ? "border-red-300" : "border-gray-100 focus-within:border-green-400"}`}>
+                  <svg className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <input
-                    type="text"
-                    placeholder="輸入目的地點"
+                  <PlacesAutocomplete
+                    id="post-to"
                     value={form.to}
-                    onChange={(e) => set("to", e.target.value)}
-                    className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
+                    onChange={(v) => set("to", v)}
+                    placeholder="輸入目的地點"
+                    aria-label="目的地"
+                    className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none w-full"
                   />
                 </div>
+                <span className={fieldErr("to", !form.to)}>⚠ 請填入目的地</span>
               </div>
 
               {/* Date */}
@@ -200,8 +210,10 @@ function PostRidePage() {
             </div>
 
             <button
-              onClick={() => setStep(2)}
-              disabled={!step1Valid}
+              onClick={() => {
+                touch("from"); touch("to"); touch("date"); touch("time");
+                if (step1Valid) setStep(2);
+              }}
               className="w-full bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold py-4 rounded-xl shadow disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all"
             >
               下一步：費用設定

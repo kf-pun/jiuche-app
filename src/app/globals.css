@@ -17,3 +17,23 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  /* 後台 ESG 報告列印：隱藏左側導覽、操作按鈕，只印報告內容 */
+  aside,
+  nav,
+  .print\:hidden {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  /* 讓 fixed layout 在列印時改為正常流 */
+  .fixed.inset-0.flex {
+    position: static !important;
+    display: block !important;
+  }
+  main {
+    overflow: visible !important;
+  }
+}

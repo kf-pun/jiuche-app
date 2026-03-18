@@ -61,6 +61,16 @@ function ConfirmContent() {
     // 重新載入餘額（已由 server action 更新）
     await refreshUser();
 
+    // UX-4：持久化訂單號，避免刷新後消失
+    if (result.bookingId) {
+      sessionStorage.setItem("jiuche_last_booking", JSON.stringify({
+        bookingId: result.bookingId,
+        rideTitle: `${ride.from} → ${ride.to}`,
+        amount: total,
+        createdAt: new Date().toISOString(),
+      }));
+    }
+
     router.push(
       `/booking/success?rideId=${ride.id}&driverName=${encodeURIComponent(ride.driver.name)}&from=${encodeURIComponent(ride.from)}&to=${encodeURIComponent(ride.to)}&time=${ride.departureTime}&co2=${ride.co2Saved}&price=${total}`
     );

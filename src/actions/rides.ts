@@ -164,6 +164,66 @@ export async function getRideDetail(id: string): Promise<RideDetail | null> {
   };
 }
 
+// ── Get Driver Reviews ───────────────────────────────────────────────────────
+
+export interface DriverReviewItem {
+  id: string;
+  passengerName: string;  // 匿名：姓氏 + **
+  rating: number;
+  tags: string[];
+  comment: string;
+  relativeTime: string;
+}
+
+function anonymizeName(name: string): string {
+  if (!name) return "用戶**";
+  return name[0] + "**";
+}
+
+function relativeTime(isoStr: string): string {
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "今天";
+  if (days < 7) return `${days} 天前`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks} 週前`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} 個月前`;
+  return `${Math.floor(months / 12)} 年前`;
+}
+
+export async function getDriverReviews(
+  driverId: string,
+  limit = 10
+): Promise<DriverReviewItem[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("reviews")
+    .select(`
+      id, rating, tags, comment, created_at,
+      reviewer:users!reviewer_id(name)
+    `)
+    .eq("reviewee_id", driverId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error || !data) return [];
+
+  return data.map((r) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const reviewer = r.reviewer as any;
+    return {
+      id: r.id,
+      passengerName: anonymizeName(reviewer?.name ?? ""),
+      rating: r.rating,
+      tags: r.tags ?? [],
+      comment: r.comment ?? "",
+      relativeTime: relativeTime(r.created_at),
+    };
+  });
+}
+
 // ── Create Ride ──────────────────────────────────────────────────────────────
 
 export interface CreateRideInput {

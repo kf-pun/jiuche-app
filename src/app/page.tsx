@@ -1,19 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import PlacesAutocomplete from "@/components/PlacesAutocomplete";
+
+const SEARCH_HISTORY_KEY = "jiuche_search_guest";
+
+function getSearchHistoryKey(): string {
+  try {
+    const raw = localStorage.getItem("jiuche_user");
+    if (raw) {
+      const u = JSON.parse(raw);
+      if (u?.id) return `jiuche_search_${u.id}`;
+    }
+  } catch { /* ignore */ }
+  return SEARCH_HISTORY_KEY;
+}
+
+function loadSearchHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(getSearchHistoryKey());
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch { return []; }
+}
+
+function saveSearchTerm(term: string) {
+  try {
+    const key = getSearchHistoryKey();
+    const existing = loadSearchHistory().filter((t) => t !== term);
+    const updated = [term, ...existing].slice(0, 5);
+    localStorage.setItem(key, JSON.stringify(updated));
+  } catch { /* ignore */ }
+}
 
 export default function Home() {
   const router = useRouter();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [date, setDate] = useState("");
-
   const [loading, setLoading] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+
+  useEffect(() => {
+    setSearchHistory(loadSearchHistory());
+  }, []);
 
   const handleSearch = () => {
     if (!from || !to || !date) return;
     setLoading(true);
+    saveSearchTerm(`${from} → ${to}`);
     setTimeout(() => {
       router.push(`/results?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}`);
     }, 1000);
@@ -50,18 +85,19 @@ export default function Home() {
 
           {/* From */}
           <div className="mb-3">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">出發地</label>
+            <label className="text-xs font-medium text-gray-500 mb-1 block" htmlFor="home-from">出發地</label>
             <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                 <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v3M12 19v3M2 12h3M19 12h3" />
               </svg>
-              <input
-                type="text"
-                placeholder="輸入出發地點"
+              <PlacesAutocomplete
+                id="home-from"
                 value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
+                onChange={setFrom}
+                placeholder="輸入出發地點"
+                aria-label="出發地"
+                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none w-full"
               />
             </div>
           </div>
@@ -79,18 +115,19 @@ export default function Home() {
 
           {/* To */}
           <div className="mb-3">
-            <label className="text-xs font-medium text-gray-500 mb-1 block">目的地</label>
+            <label className="text-xs font-medium text-gray-500 mb-1 block" htmlFor="home-to">目的地</label>
             <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 0 1-2.827 0l-4.244-4.243a8 8 0 1 1 11.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
               </svg>
-              <input
-                type="text"
-                placeholder="輸入目的地點"
+              <PlacesAutocomplete
+                id="home-to"
                 value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
+                onChange={setTo}
+                placeholder="輸入目的地點"
+                aria-label="目的地"
+                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none w-full"
               />
             </div>
           </div>
@@ -140,6 +177,29 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      {/* 搜尋歷史 */}
+      {searchHistory.length > 0 && (
+        <div className="px-4 mt-5 mb-2">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">最近搜尋</p>
+          <div className="flex flex-wrap gap-2">
+            {searchHistory.map((h) => {
+              const parts = h.split(" → ");
+              return (
+                <button
+                  key={h}
+                  onClick={() => {
+                    if (parts.length === 2) { setFrom(parts[0]); setTo(parts[1]); }
+                  }}
+                  className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full hover:bg-green-50 hover:text-green-700 transition-colors"
+                >
+                  {h}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Quick Suggestions */}
       <div className="px-4 mt-5 mb-4">

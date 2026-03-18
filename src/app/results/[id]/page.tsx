@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getRideDetail, type RideDetail } from "@/actions/rides";
+import { getRideDetail, getDriverReviews, type RideDetail, type DriverReviewItem } from "@/actions/rides";
 import Link from "next/link";
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
@@ -24,9 +24,16 @@ export default function RideDetailPage() {
   const router = useRouter();
   const [ride, setRide] = useState<RideDetail | null | undefined>(undefined);
   const [seats, setSeats] = useState(1);
+  const [reviews, setReviews] = useState<DriverReviewItem[]>([]);
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   useEffect(() => {
-    getRideDetail(params.id as string).then(setRide);
+    getRideDetail(params.id as string).then((r) => {
+      setRide(r);
+      if (r?.driver?.id) {
+        getDriverReviews(r.driver.id, 10).then(setReviews);
+      }
+    });
   }, [params.id]);
 
   if (ride === undefined) {
@@ -188,6 +195,59 @@ export default function RideDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Driver Reviews */}
+      <div className="px-4 mt-3">
+        <div className="bg-white rounded-2xl shadow-sm p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">
+            司機評價（{reviews.length} 則）
+          </h3>
+          {reviews.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-4">此司機尚無評價</p>
+          ) : (
+            <>
+              {(showAllReviews ? reviews : reviews.slice(0, 5)).map((r) => (
+                <div key={r.id} className="bg-white border border-gray-100 rounded-xl p-4 mb-3 last:mb-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-green-100 text-green-700 text-sm font-medium flex items-center justify-center flex-shrink-0">
+                      {r.passengerName[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-700">{r.passengerName}</p>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <svg key={i} className={`w-3 h-3 ${i < r.rating ? "text-yellow-400" : "text-gray-200"}`} fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                          </svg>
+                        ))}
+                        <span className="text-xs text-gray-400 ml-1">{r.relativeTime}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {r.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {r.tags.slice(0, 3).map((tag) => (
+                        <span key={tag} className="bg-green-100 text-green-700 rounded-full px-2 py-0.5 text-xs">{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                  {r.comment && (
+                    <p className="text-sm text-gray-600 line-clamp-3">{r.comment}</p>
+                  )}
+                </div>
+              ))}
+              {!showAllReviews && reviews.length > 5 && (
+                <button
+                  onClick={() => setShowAllReviews(true)}
+                  className="text-green-600 text-sm underline mt-1"
+                >
+                  + {reviews.length - 5} 則更多評價
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Bottom booking bar */}
       <div className="px-4 mt-4 mb-6">

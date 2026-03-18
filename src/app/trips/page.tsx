@@ -272,7 +272,17 @@ function TripsPage() {
         ) : (
           history.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-gray-400 text-sm">尚無歷史行程</p>
+              <svg className="w-24 h-24 text-gray-200 mb-4" viewBox="0 0 96 96" fill="none" aria-hidden="true">
+                <rect x="16" y="36" width="64" height="44" rx="6" stroke="currentColor" strokeWidth="3" />
+                <path d="M28 36V28a20 20 0 0 1 40 0v8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="48" cy="58" r="8" stroke="currentColor" strokeWidth="3" />
+                <line x1="48" y1="66" x2="48" y2="74" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+              <p className="text-gray-500 font-medium">還沒有歷史行程</p>
+              <p className="text-gray-400 text-sm mt-1">趕快搭乘第一趟，開始累積 ESG 減碳足跡！</p>
+              <Link href="/" className="mt-4 bg-green-600 text-white rounded-xl px-6 py-3 text-sm font-medium hover:bg-green-700 transition-colors">
+                搜尋共乘
+              </Link>
             </div>
           ) : (
             history.map((t) => <TripCard key={t.id} trip={t} />)

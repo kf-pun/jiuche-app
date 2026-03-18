@@ -58,6 +58,17 @@
 | 23 | 後台行程管理 | `/admin/rides` | [spec-admin-05-rides.md](./spec-admin-05-rides.md) | 已確認 |
 | 24 | 後台金流管理 | `/admin/transactions` | [spec-admin-06-transactions.md](./spec-admin-06-transactions.md) | 已確認 |
 | 25 | 儲值串接 ECPay | `/wallet/topup` + `/api/ecpay/callback` | [spec-admin-07-ecpay.md](./spec-admin-07-ecpay.md) | 已確認 |
+| 26 | 後台評價管理 | `/admin/reviews` | [spec-admin-08-reviews.md](./spec-admin-08-reviews.md) | 已確認 |
+| 27 | 後台通知管理 | `/admin/notifications` | [spec-admin-09-notifications.md](./spec-admin-09-notifications.md) | 已確認 |
+| 28 | 後台 ESG 報告 | `/admin/esg` | [spec-admin-10-esg.md](./spec-admin-10-esg.md) | 已確認 |
+
+### 🟤 前台補完 — Sprint 8
+
+| 優先 | 功能名稱 | 路由 | 規格書 | 狀態 |
+|------|----------|------|--------|------|
+| 29 | 地點自動完成（Google Maps） | `/`、`/post` | [spec-18-places-autocomplete.md](./spec-18-places-autocomplete.md) | 已確認 |
+| 30 | 司機歷史評價列表 | `/results/[id]` | [spec-19-driver-reviews.md](./spec-19-driver-reviews.md) | 已確認 |
+| 31 | UX 補完（空狀態/驗證/無障礙） | 多頁面 | [spec-20-ux-improvements.md](./spec-20-ux-improvements.md) | 已確認 |
 
 ---
 
@@ -68,6 +79,7 @@
 | `BottomNav` | 底部導覽列（`/auth/*` 與 `/admin/*` 時隱藏） | 所有前台頁面 |
 | `AuthGuard` | 登入保護（未登入自動導向登入頁） | spec-04-login.md |
 | `AdminGuard` | 後台保護（非 admin role → 前台首頁，Sprint 6 新增） | spec-admin-01-layout.md |
+| `PlacesAutocomplete` | 地點自動完成（Google Maps Places API，Sprint 8 新增） | spec-18-places-autocomplete.md |
 
 ---
 

@@ -138,3 +138,9 @@ May 12 ■    Sprint 9  後台 P3（B2B）+ 部署
 | S7-1 行程管理 | 2026-03-18 | `src/actions/admin/rides.ts`；列表/詳情/強制取消（批次退款 + 通知） |
 | S7-2 金流管理 | 2026-03-18 | `src/actions/admin/transactions.ts`；月統計/列表/補償 Modal/CSV 匯出（UTF-8 BOM） |
 | S7-3 ECPay 儲值串接 | 2026-03-18 | `createEcpayOrder()` SHA256 CheckMacValue；`/api/ecpay/callback` webhook；`/api/ecpay/result` client redirect；信用卡/ATM/超商走 ECPay，LINE Pay 保留舊流程 |
+| S8-1 後台評價管理 | 2026-03-18 | `src/actions/admin/reviews.ts`；列表/星等/日期篩選；刪除評價 + 重算司機平均分（AVG + rating_count） |
+| S8-2 後台通知管理 | 2026-03-18 | `src/actions/admin/notifications.ts`；notifications 表新增 `created_by` / `target_label` 欄位；批次寫入（每批 100 筆） |
+| S8-3 後台 ESG 報告 | 2026-03-18 | `src/actions/admin/esg.ts`；KPI 4 格 + SVG 折線圖 + 公司 Top 10 排行；`window.print()` 匯出 PDF（print CSS 隱藏側欄） |
+| S8-4 地點自動完成 | 2026-03-18 | `PlacesAutocomplete` 元件 + `/api/places` 代理路由；首頁 + 發布行程起訖點欄位套用；無 API Key 自動降級 |
+| S8-5 司機歷史評價列表 | 2026-03-18 | `getDriverReviews()` in rides.ts；行程詳情頁底部顯示最新 5 筆，可展開全部；乘客姓名匿名（姓氏 + **） |
+| S8-6 UX 補完 | 2026-03-18 | 歷史行程空狀態 SVG 插圖；發布行程欄位驗證紅字（blur 觸發）；首頁個人化搜尋記錄（localStorage）；訂單號 sessionStorage 持久化；BottomNav aria-label 全補 |

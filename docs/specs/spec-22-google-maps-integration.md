@@ -1,6 +1,6 @@
 # Google Maps 深度整合 功能規格書
 
-**版本：** v1.3
+**版本：** v1.4
 **日期：** 2026-03-18
 **狀態：** 已確認
 
@@ -210,12 +210,19 @@
 |------|------|------|
 | `service_fee` | INTEGER | 平台服務費（$10/$15/$20 依距離分級，企業員工 0） |
 
-### DB 新增欄位（`companies` 表）
+### 新增表（`companies`）
+
+> Sprint 9 的企業管理以 `users.company` 文字分組，**尚未建立獨立 companies 表**，此 migration 需 `CREATE TABLE`。
 
 | 欄位 | 型別 | 說明 |
 |------|------|------|
-| `subscription_active` | BOOLEAN | 企業訂閱是否有效（預設 false） |
+| `id` | UUID PRIMARY KEY | `gen_random_uuid()` |
+| `name` | TEXT NOT NULL UNIQUE | 對應 `users.company` 文字值 |
+| `subscription_active` | BOOLEAN NOT NULL DEFAULT false | 企業訂閱是否有效 |
 | `subscription_expires_at` | TIMESTAMPTZ | 訂閱到期時間（可為 NULL） |
+| `created_at` | TIMESTAMPTZ DEFAULT now() | 建立時間 |
+
+乘客企業判斷：`users.company = companies.name AND companies.subscription_active = true`
 
 ### 新增表（`system_config`）
 
@@ -235,15 +242,36 @@
 
 Migration 檔：`supabase/migrations/002_add_map_fields.sql`
 
+### `users.vehicle_type` 標準化
+
+`vehicle_type` 欄位已存在，Migration 補加 CHECK constraint：
+
+```sql
+ALTER TABLE users
+ADD CONSTRAINT vehicle_type_check
+CHECK (vehicle_type IS NULL OR vehicle_type IN (
+  '小型轎車', '中型轎車', '大型轎車',
+  'SUV（小）', 'SUV（中）', 'SUV（大）',
+  'MPV', '電動車'
+));
+```
+
+現有不合規值（舊用戶自由輸入文字）設為 NULL；油資計算時 NULL → 預設使用「中型轎車」兜底。
+
 ### 新增 API 代理路由
 
 | 路由 | 說明 |
 |------|------|
 | `/api/directions` | 代理 Google Directions API |
 | `/api/geocode` | 代理 Google Geocoding API（座標 → 地址） |
+| `/api/cron/update-fuel-price` | Vercel Cron 每週四呼叫，從 data.gov.tw 取得中油最新油價並更新 `system_config` |
 
 ### 環境變數
-`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`（需在 GCP 額外啟用 Maps JavaScript API、Directions API、Geocoding API）
+
+| 變數 | 說明 |
+|------|------|
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | 需在 GCP 額外啟用 Maps JavaScript API、Directions API、Geocoding API |
+| `CRON_SECRET` | Vercel Cron 保護用，Bearer token 驗證（route handler 檢查 `Authorization` header） |
 
 ---
 
@@ -264,7 +292,8 @@ Migration 檔：`supabase/migrations/002_add_map_fields.sql`
 - 車型油耗數值來源：交通部能源局 ecocar.artc.org.tw，官方值 × 1.15 市區修正係數
 - 司機不得手動修改油耗與油號，須在「個人資料 → 車輛設定」選擇車型類別（8 種），系統自動帶入
 - 油號依車型類別固定預設（小/中型 → 95；大型/大 SUV → 98；電動車 → N/A），防止司機選高油號多報油資
-- 油價每週四自動從台灣中油（CPC）官網爬取，存入 `system_config` 表（`fuel_price_92/95/98`）；初始手動填值
+- 油價每週四透過 Vercel Cron 呼叫台灣政府開放資料平台（data.gov.tw）能源局油價 dataset API 取得，存入 `system_config` 表；不爬蟲（避免官網改版失效）；Cron 失敗時保留上次成功值，系統不中斷
+- `/api/cron/update-fuel-price` 以 `CRON_SECRET` Bearer token 保護，防止外部任意呼叫
 - 平台服務費分三級：$10（≤10km）/ $15（11–30km）/ $20（>30km），後台可調整金額與分界
 - 企業訂閱管理由後台 `/admin/companies` 操作（`subscription_active` 開關）
 - Directions API 計費：每 1,000 次請求約 $5 USD；發布行程與行程詳情各呼叫一次

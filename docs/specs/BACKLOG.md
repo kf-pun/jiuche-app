@@ -127,15 +127,18 @@ May 19 ■    Sprint 10 Google Maps 深度整合
 | S10-2 | **地圖選點 Modal** | 共用 `MapPickerModal` 元件；點擊地圖或拖曳大頭針選點；帶回地址文字與座標；`/api/geocode` 代理路由 | 🔲 待開發 |
 | S10-3 | **行程詳情路線地圖** | `/results/[id]` 新增路線地圖卡片（200px）；Directions API 計算路線藍線 + 距離 + 行車時間；`/api/directions` 代理路由 | 🔲 待開發 |
 | S10-4 | **合法油資上限計算 + 費用拆分** | 發布共乘頁依 Directions API 距離計算法定油資上限（油耗 × 油價 ÷ 乘客數）；票價不得超上限；預訂確認頁拆顯油資 + 服務費；企業員工服務費 $0 | 🔲 待開發 |
-| S10-5 | **DB Migration** | `supabase/migrations/002_add_map_fields.sql`；`rides` 新增地圖欄位 + `fare_limit`；`bookings` 新增 `service_fee`；`companies` 新增 `subscription_active` / `subscription_expires_at`；新增 `system_config` 表（油價 + 服務費分級動態設定） | 🔲 待開發 |
-| S10-6 | **每週油價自動更新（Vercel Cron）** | `/api/cron/update-fuel-price` 每週四抓取台灣中油（CPC）最新 92/95/98 無鉛油價，存入 `system_config` 表；`vercel.json` 設定 cron schedule | 🔲 待開發 |
+| S10-5 | **DB Migration** | `supabase/migrations/002_add_map_fields.sql`；`rides` 新增地圖欄位 + `fare_limit`；`bookings` 新增 `service_fee`；**CREATE TABLE `companies`**（id/name/subscription_active/subscription_expires_at）；`users.vehicle_type` 加 CHECK constraint（8 種類別）；新增 `system_config` 表 | 🔲 待開發 |
+| S10-6 | **每週油價自動更新（Vercel Cron）** | `/api/cron/update-fuel-price` 每週四呼叫 data.gov.tw 能源局油價 API（非爬蟲）取得 92/95/98 最新油價，存入 `system_config` 表；`CRON_SECRET` Bearer token 保護；失敗時保留舊值不中斷系統 | 🔲 待開發 |
 
 > **已確認：**
 > - 油耗依車型類別查官方表（8 種），司機不得自填
 > - 油號依車型類別固定預設（小/中型 → 95；大型/大 SUV → 98；電動車 → N/A），不開放選擇，防舞弊
-> - 油價每週四自動從台灣中油（CPC）抓取，存入 `system_config` 表（`fuel_price_92/95/98`）
+> - 油價每週四透過 data.gov.tw 能源局 API 自動更新（非爬蟲），存入 `system_config` 表
 > - 服務費採方案 B 三段分級：$10（≤10km）/ $15（11–30km）/ $20（>30km），後台可透過 `system_config` 調整
 > - 散客乘客付油資 + 服務費；企業員工只付油資（服務費由企業月費涵蓋）
+> - `companies` 表為 Sprint 10 新建（Sprint 9 用 group-by 無獨立表）；乘客企業判斷改為 JOIN companies
+> - `users.vehicle_type` 加 CHECK constraint；舊不合規值設 NULL，計算時兜底用中型轎車
+> - Vercel Cron 以 `CRON_SECRET` Bearer token 保護
 
 ---
 

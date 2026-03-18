@@ -126,13 +126,12 @@ May 19 ■    Sprint 10 Google Maps 深度整合
 | S10-1 | **GPS 定位按鈕** | 首頁與發布行程出發地欄位旁新增「📍 定位」按鈕；Browser Geolocation API + Geocoding API 反查地址 | 🔲 待開發 |
 | S10-2 | **地圖選點 Modal** | 共用 `MapPickerModal` 元件；點擊地圖或拖曳大頭針選點；帶回地址文字與座標；`/api/geocode` 代理路由 | 🔲 待開發 |
 | S10-3 | **行程詳情路線地圖** | `/results/[id]` 新增路線地圖卡片（200px）；Directions API 計算路線藍線 + 距離 + 行車時間；`/api/directions` 代理路由 | 🔲 待開發 |
-| S10-4 | **車費自動估算** | 發布共乘頁依距離計算建議票價（`$50 + $8/km`）；司機可手動調整 | 🔲 待開發 |
-| S10-5 | **DB Migration** | `supabase/migrations/002_add_map_fields.sql`；`rides` 表新增 `origin_lat/lng`、`destination_lat/lng`、`distance_km`、`duration_minutes`（全部可 NULL） | 🔲 待開發 |
+| S10-4 | **合法油資上限計算 + 費用拆分** | 發布共乘頁依 Directions API 距離計算法定油資上限（油耗 × 油價 ÷ 乘客數）；票價不得超上限；預訂確認頁拆顯油資 + 服務費；企業員工服務費 $0 | 🔲 待開發 |
+| S10-5 | **DB Migration** | `supabase/migrations/002_add_map_fields.sql`；`rides` 新增地圖欄位 + `fare_limit`；`bookings` 新增 `service_fee`；`companies` 新增 `subscription_active` / `subscription_expires_at` | 🔲 待開發 |
 
 > **待確認（開發前需決定）：**
-> - 地圖選點 Modal 內是否同時提供搜尋框？
-> - 車費公式 `$50 + $8/km` 是否符合預期？
-> - GPS 定位是否僅用於出發地？
+> - 油耗係數（0.1 L/km）與油價（$32/L）是否合理？是否讓司機填入自己車輛的油耗？
+> - 平台服務費 $15/趟 是否為正確金額？是否依距離分級？
 
 ---
 

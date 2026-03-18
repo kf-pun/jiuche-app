@@ -2,7 +2,7 @@
 
 企業 ESG 減碳共乘平台 Prototype。
 策略：前端優先、Mobile-First → 現階段串接真實 Supabase 後端。
-目前階段：Sprint 9 完成 — 全專案功能實作完畢，待 Google OAuth GCP 設定 + Vercel 正式部署。
+目前階段：Sprint 9 完成 → Sprint 10 規格書已確認（Google Maps 深度整合）。
 後台計畫：方向 A（同專案 `/admin` 路由），Sprint 6 開始建置，寬版 Layout，電腦操作。
 
 ## 開發準則（強制執行）
@@ -131,6 +131,7 @@ addBalance(amount)       // 儲值（Sprint 4 改走 wallet_transactions）
 - **Sprint 7 完成**：行程管理、金流管理、ECPay 儲值串接
 - **Sprint 8 完成**：評價管理、通知管理、ESG 報告、地點自動完成、司機評價列表、UX 補完
 - **Sprint 9 完成**：S9-1 企業管理（/admin/companies）、S9-2 Google OAuth（/auth/callback）、S9-3 Vercel 設定（vercel.json）、S9-4 E2E 靜態驗收（24 TC，0 FAIL）
+- **Sprint 10 規格書已確認（待開發）**：GPS 定位、地圖選點 Modal、路線地圖、合法油資上限計算、費用拆分、DB Migration + Vercel Cron 油價更新（spec-22-google-maps-integration.md v1.3）
 - **待完成（人工操作）**：GCP OAuth 2.0 Client 設定 + Supabase Google Provider 啟用 + Vercel 部署（`vercel --prod`）
 - 詳細任務清單：`/docs/specs/BACKLOG.md`
 
@@ -146,15 +147,17 @@ addBalance(amount)       // 儲值（Sprint 4 改走 wallet_transactions）
 - DB Schema：`supabase/migrations/001_initial_schema.sql`
 - 環境變數範本：`.env.local.example`
 
-### 六張核心表
+### 六張核心表（+ Sprint 10 新增）
 | 表名 | 說明 |
 |------|------|
 | `users` | 關聯 auth.users，含餘額/評分/CO₂；Sprint 6 新增 `role`（user/admin）與 `is_active` 欄位 |
-| `rides` | 共乘行程，含 available_seats |
-| `bookings` | 乘客預訂，confirmed/cancelled/completed |
+| `rides` | 共乘行程，含 available_seats；Sprint 10 新增座標/距離/時間/油資上限欄位 |
+| `bookings` | 乘客預訂，confirmed/cancelled/completed；Sprint 10 新增 `service_fee` 欄位 |
 | `reviews` | 行程評價，unique on booking_id |
 | `wallet_transactions` | 錢包明細，amount 正=入帳 負=扣款；後台手動補償用 `type = 'adjustment'` |
 | `notifications` | 通知中心，含 is_read |
+| `companies` | B2B 企業帳號；Sprint 10 新增 `subscription_active` / `subscription_expires_at` |
+| `system_config` | 動態設定（Sprint 10 新增）：油價（92/95/98）+ 服務費分級，每週四自動更新油價 |
 
 ## 部署（最後執行）
 ```bash

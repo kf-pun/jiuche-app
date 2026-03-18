@@ -127,7 +127,10 @@ addBalance(amount)       // 儲值（Sprint 4 改走 wallet_transactions）
 - **Sprint 3 完成**：S3-1 發布共乘寫入 rides 表、S3-2 搜尋查詢真實資料（起迄模糊 + 日期時區 + 篩選排序）
 - **Sprint 4 完成**：S4-1 座位預訂寫入 DB（createBooking + 扣座位 + 付款交易）、S4-2 錢包餘額真實持久化
 - **Sprint 5 完成**：S5-1 我的行程從真實 DB、S5-2 評價持久化 + 司機評分更新、S5-3 通知持久化 + BottomNav 未讀點、S5-4 ESG 數據動態計算
-- **下一步 Sprint 6**：後台管理系統（`/admin` 路由），P0 架構 + 會員/訂單管理
+- **Sprint 6 完成**：後台 P0 架構（AdminGuard + Layout）、Dashboard、會員管理、訂單管理
+- **Sprint 7 完成**：行程管理、金流管理、ECPay 儲值串接
+- **Sprint 8 完成**：評價管理、通知管理、ESG 報告、地點自動完成、司機評價列表、UX 補完
+- **下一步 Sprint 9**：企業管理（B2B）、Google OAuth、Vercel 部署、E2E 驗收
 - 詳細任務清單：`/docs/specs/BACKLOG.md`
 
 ---

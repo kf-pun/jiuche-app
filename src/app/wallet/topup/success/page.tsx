@@ -14,7 +14,7 @@ const methodLabel: Record<string, string> = {
 
 function SuccessContent() {
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [show, setShow] = useState(false);
 
   const amount = parseInt(searchParams.get("amount") || "0");
@@ -22,8 +22,10 @@ function SuccessContent() {
   const [txId] = useState(() => "TX" + Math.floor(10000000 + Math.random() * 90000000));
 
   useEffect(() => {
+    refreshUser();
     const t = setTimeout(() => setShow(true), 100);
     return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

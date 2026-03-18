@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
-import { createTopup } from "@/actions/wallet";
+import { createTopup, createEcpayOrder } from "@/actions/wallet";
 import Link from "next/link";
 
 const PRESET_AMOUNTS = [100, 300, 500, 1000, 2000, 3000];
@@ -54,15 +54,40 @@ export default function TopupPage() {
     setLoading(true);
     setError("");
 
-    const result = await createTopup(finalAmount, method);
-    if (!result.success) {
-      setError(result.error ?? "儲值失敗，請稍後再試");
+    // LINE Pay: mock direct topup
+    if (method === "linepay") {
+      const result = await createTopup(finalAmount, method);
+      if (!result.success) {
+        setError(result.error ?? "儲值失敗，請稍後再試");
+        setLoading(false);
+        return;
+      }
+      await refreshUser();
+      router.push(`/wallet/topup/success?amount=${finalAmount}&method=${method}`);
+      return;
+    }
+
+    // Credit / ATM / CVS → ECPay
+    const result = await createEcpayOrder(finalAmount, method as "credit" | "atm" | "cvs");
+    if (!result.success || !result.formAction || !result.params) {
+      setError(result.error ?? "建立訂單失敗，請稍後再試");
       setLoading(false);
       return;
     }
 
-    await refreshUser();
-    router.push(`/wallet/topup/success?amount=${finalAmount}&method=${method}`);
+    // Auto-submit hidden form to ECPay
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = result.formAction;
+    Object.entries(result.params).forEach(([key, value]) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
   };
 
   if (!isLoggedIn) {

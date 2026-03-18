@@ -65,10 +65,12 @@ export interface ReviewRow {
 export interface WalletTransactionRow {
   id: string
   user_id: string
-  type: 'topup' | 'payment' | 'refund' | 'earning'
+  type: 'topup' | 'payment' | 'refund' | 'earning' | 'adjustment'
   amount: number
   description: string
   reference_id: string | null
+  status: 'pending' | 'completed' | 'failed'
+  ecpay_trade_no: string | null
   created_at: string
 }
 
@@ -89,7 +91,12 @@ export type UserInsert = Omit<UserRow, 'id' | 'created_at'> & { id?: string; cre
 export type RideInsert = Omit<RideRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
 export type BookingInsert = Omit<BookingRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
 export type ReviewInsert = Omit<ReviewRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-export type WalletTransactionInsert = Omit<WalletTransactionRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+export type WalletTransactionInsert = Omit<WalletTransactionRow, 'id' | 'created_at' | 'status' | 'ecpay_trade_no'> & {
+  id?: string
+  created_at?: string
+  status?: 'pending' | 'completed' | 'failed'
+  ecpay_trade_no?: string | null
+}
 export type NotificationInsert = Omit<NotificationRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
 
 // --- Update types (所有欄位皆選填) ---

@@ -55,6 +55,9 @@
 | 20 | 後台 Dashboard 總覽 | `/admin` | [spec-admin-02-dashboard.md](./spec-admin-02-dashboard.md) | 已確認 |
 | 21 | 後台會員管理 | `/admin/users` | [spec-admin-03-users.md](./spec-admin-03-users.md) | 已確認 |
 | 22 | 後台訂單管理 | `/admin/bookings` | [spec-admin-04-bookings.md](./spec-admin-04-bookings.md) | 已確認 |
+| 23 | 後台行程管理 | `/admin/rides` | [spec-admin-05-rides.md](./spec-admin-05-rides.md) | 已確認 |
+| 24 | 後台金流管理 | `/admin/transactions` | [spec-admin-06-transactions.md](./spec-admin-06-transactions.md) | 已確認 |
+| 25 | 儲值串接 ECPay | `/wallet/topup` + `/api/ecpay/callback` | [spec-admin-07-ecpay.md](./spec-admin-07-ecpay.md) | 已確認 |
 
 ---
 

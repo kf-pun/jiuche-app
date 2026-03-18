@@ -1,7 +1,7 @@
 # 錢包總覽 功能規格書
 
-**版本：** v1.0
-**日期：** 2026-03-17
+**版本：** v1.1
+**日期：** 2026-03-18
 **狀態：** 已確認
 
 ---
@@ -31,20 +31,23 @@
 ### 已完成功能
 - AuthGuard 保護：未登入自動導向 `/auth/login`
 - **Header 餘額卡：**
-  - 大字顯示目前餘額（來自 `authContext user.balance`）
-  - 本月支出 / 本月入帳（各為 `mockTransactions` 加總）
+  - 大字顯示目前餘額（來自 `authContext user.balance`，DB 同步）
+  - 本月支出 / 本月入帳（從 `wallet_transactions` 依當月日期篩選加總）
 - **快捷操作列**（浮在 Header 下方）：
   - 儲值 → `/wallet/topup`
   - 轉帳 → `#`（視覺展示，無功能）
   - 提領 → `#`（視覺展示，無功能）
-- **交易紀錄列表**（8 筆 mock）：
-  - 4 種類型：儲值（藍）、共乘付款（橘）、共乘收款（綠）、退款（紫）
-  - 每筆顯示：類型圖示、標題、副標題（司機/付款方式）、金額（入帳綠 +、扣款灰 -）、日期
+- **交易紀錄列表**（從 DB 載入，最多 50 筆）：
+  - 4 種 DB 類型：topup（藍）、payment（橘）、earning（綠）、refund（紫）
+  - 每筆顯示：類型圖示、類型中文標籤、description、金額（入帳綠 +、扣款灰 -）、日期
+  - 含 loading spinner + 空狀態提示
+- **[S4-2 新增]** 交易紀錄從 `wallet_transactions` 表真實載入（`getWalletTransactions()` Server Action）
+- **[S4-2 新增]** 本月收支以當月真實交易計算（非 mock 固定值）
 
 ### 待製作
 - 轉帳功能（目前 href="#"，無實際功能）
 - 提領功能（目前 href="#"，無實際功能）
-- 交易紀錄分頁或「載入更多」（目前固定顯示全部 8 筆）
+- 交易紀錄分頁或「載入更多」（目前上限 50 筆）
 - 按類型篩選交易紀錄（如只看付款 / 只看收款）
 
 ---
@@ -97,12 +100,11 @@
 
 ## 6. 資料說明
 
-- **餘額**：來自 `authContext user.balance`（`localStorage jiuche_user` 持久化）
-- **月支出 / 入帳**：來自頁面內 `mockTransactions`（8 筆），非從 authContext 計算
-  - 月支出 = `amount < 0` 加總 = NT$245
-  - 月入帳 = `amount > 0` 加總 = NT$1,165
-- **交易紀錄**：頁面內 `mockTransactions` 硬編碼，不與 authContext balance 連動
-- 交易欄位：`id, type, title, subtitle, amount, date, balance`
+- **餘額**：來自 `authContext user.balance`，由 Supabase `users.balance` 持久化
+- **月支出 / 入帳**：從 `wallet_transactions` 篩選當月（`created_at` 月份比對），`amount < 0` 加總 = 支出，`amount > 0` 加總 = 入帳
+- **交易紀錄**：透過 `getWalletTransactions()` Server Action 從 `wallet_transactions` 表查詢（`user_id = auth.uid()`，按 created_at 降冪，上限 50 筆）
+- DB 交易類型：`topup | payment | refund | earning`（對應顯示中文：儲值 / 共乘付款 / 退款 / 共乘收款）
+- 交易欄位：`id, type, amount, description, createdAt`
 
 ---
 
@@ -118,13 +120,5 @@
 
 ## 8. 備註
 
-- 本月收支以 `mockTransactions` 全部 8 筆計算，並非真正篩選「本月」，正式需加日期範圍過濾
-- 交易紀錄與 `authContext balance` 不連動——預訂扣款只影響 balance，不會新增 mockTransactions 紀錄
+- 本月收支現已從真實 `wallet_transactions` 依當月篩選計算（S4-2 完成）
 - 轉帳、提領功能目前為外觀展示，正式上線需另行規劃功能範圍
-
----
-
-## 9. 待確認事項
-
-- **Q1**：本月收支目前用全部 8 筆計算（非真正按月篩選），是否需要在 Prototype 階段先修正？
-- **Q2**：轉帳和提領是 Prototype 必要展示功能，還是純視覺佔位（Demo 時不需要實際操作）？

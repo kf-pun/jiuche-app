@@ -1,7 +1,7 @@
 # 儲值 功能規格書
 
-**版本：** v1.0
-**日期：** 2026-03-17
+**版本：** v1.1
+**日期：** 2026-03-18
 **狀態：** 已確認
 
 ---
@@ -38,7 +38,7 @@
 - 儲值後餘額預覽（金額 ≥ 100 時顯示）
 - 4 種付款方式選擇：信用卡 / LINE Pay / ATM 轉帳 / 超商條碼
 - 確認儲值按鈕（金額不足時 disabled + 半透明）
-- 按鈕點擊後：Spinner 動畫 1.5 秒 → 執行 `addBalance()` → 跳轉成功頁
+- **[S4-2 新增]** 按鈕點擊後：呼叫 `createTopup()` Server Action → 成功後 `refreshUser()` → 跳轉成功頁；失敗時顯示紅色錯誤提示
 - 未登入時顯示「請先登入」+ 登入連結
 
 **儲值成功頁 `/wallet/topup/success`：**
@@ -138,11 +138,11 @@
 
 ## 6. 資料說明
 
-- **餘額來源：** `authContext user.balance`，`addBalance(amount)` 執行後即時更新並同步 localStorage
-- **付款方式選擇：** 純前端狀態（useState），不寫入任何持久化儲存
-- **交易編號：** 前端隨機產生 `"TX" + Math.floor(10000000 + Math.random() * 90000000)`，屬假資料
-- **交易時間：** `new Date().toLocaleString("zh-TW")`，顯示當前時間，非後端回傳
-- 交易完成後不新增 mockTransactions 紀錄（錢包頁交易紀錄與此次儲值不連動）
+- **儲值流程：** 呼叫 `createTopup(amount, method)` Server Action（`src/actions/wallet.ts`）：①寫入 `wallet_transactions`（type: topup）②更新 `users.balance`；成功後呼叫 `refreshUser()` 同步前端狀態
+- **付款方式選擇：** 純前端狀態（useState），存入 wallet_transactions.description（如「儲值（信用卡）」）
+- **交易編號：** 成功頁以 `useState(() => "TX" + random)` 前端產生，正式版應從 DB 讀取 wallet_transactions.id
+- **交易時間：** `new Date().toLocaleString("zh-TW")`，顯示當前時間
+- 儲值完成後 wallet 頁交易紀錄會即時反映（從 DB 載入）
 
 ---
 
@@ -161,15 +161,7 @@
 
 ## 8. 備註
 
-- 付款方式為純視覺選擇，未串接真實金流，正式上線需接信用卡、LINE Pay、銀行 ATM、超商條碼各支付閘道
-- 交易編號、交易時間皆為前端產生，正式需由後端回傳並持久化
-- 儲值後餘額（成功頁）直接讀取 `user.balance`，因為 `addBalance()` 在跳轉前已執行，故數字正確
-- 儲值完成不會新增 mockTransactions，錢包頁的交易紀錄不會即時反映本次儲值
-- 儲值下限 NT$100、上限 NT$10,000 為目前設定值，正式上線前需與業務確認
-
----
-
-## 9. 待確認事項
-
-- **Q1**：儲值下限 NT$100、上限 NT$10,000 是業務規則確定的數字，還是暫定？
-- **Q2**：超商條碼和 ATM 轉帳在 Prototype Demo 時，點擊是否需要顯示假條碼 / 假帳號頁面，還是純視覺選擇即可？
+- 付款方式為純視覺選擇，未串接真實金流，正式上線需接信用卡、LINE Pay、銀行 ATM、超商條碼各支付閘道（S7-3 ECPay 規劃）
+- 儲值後餘額（成功頁）直接讀取 `user.balance`（`refreshUser()` 已於跳轉前執行），故數字正確
+- 儲值完成後 wallet 頁交易紀錄會從 DB 顯示本次儲值（S4-2 已修正）
+- 儲值下限 NT$100、上限 NT$10,000 為暫定值，正式上線前需與業務確認

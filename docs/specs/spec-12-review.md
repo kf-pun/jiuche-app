@@ -1,8 +1,8 @@
 # 評價頁面 功能規格書
 
-**版本：** v1.0
-**日期：** 2026-03-17
-**狀態：** 已確認
+**版本：** v1.1
+**日期：** 2026-03-18
+**狀態：** S5-2 完成（評價真實持久化）
 
 ---
 
@@ -42,10 +42,15 @@
 - 「略過，稍後再評價」連結（直接返回行程列表）
 - 無效 `id` 時顯示「找不到行程」錯誤畫面
 
+### 已完成（S5-2）
+- 評價資料寫入 `reviews` 表（`src/actions/reviews.ts` `createReview()`）
+- 司機平均評分重新計算並更新 `users.rating` / `users.rating_count`
+- 防止重複評價（送出前查詢 `reviews.booking_id` 是否已存在）
+- 「我的行程」已評價行程顯示「已評價」灰色不可點按鈕
+- 錯誤訊息顯示（已評價 / 未完成 / 網路錯誤）
+
 ### 待製作
-- 評價資料實際儲存（目前僅前端模擬，送出後不會保留）
-- 司機星等累計更新（目前送出評價不影響 mockData 的司機評分）
-- 已評價的行程應在「我的行程」顯示已評價狀態，避免重複評價
+- 司機行程詳情頁顯示真實評價列表（S8-5）
 
 ---
 
@@ -139,10 +144,11 @@
 
 | 項目 | 說明 |
 |------|------|
-| `MOCK_COMPLETED_TRIPS` | 頁面內部定義的假資料，包含 t3、t4、t5 三筆已完成行程（司機名、起訖點、日期） |
 | `QUICK_TAGS` | 頁面內部定義，共 6 種標籤 |
-| 評價送出 | 目前僅前端模擬（setState），不儲存至任何地方 |
-| 司機評分 | 送出評價不影響 `mockData.ts` 的司機星等 |
+| 行程資訊 | `getBookingDetail(bookingId)` — `src/actions/bookings.ts`，從 DB 取 from/to/司機名 |
+| 評價送出 | `createReview()` — `src/actions/reviews.ts`，寫入 `reviews` 表 + 更新司機評分 |
+| 重複評價 | server 端防護：先查 `reviews.booking_id`，已存在則回傳 error |
+| 已評價狀態 | `getUserBookings()` JOIN `reviews(id)` → `hasReview` 欄位，trips 頁按鈕鎖定 |
 
 **備註：** 可評價行程（t3、t4、t5）與「我的行程」頁的歷史行程資料（來自 `mockData.ts` 的 trip 物件）為獨立的假資料，兩者尚未串接。
 

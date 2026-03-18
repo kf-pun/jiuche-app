@@ -1,16 +1,11 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-
-const MOCK_COMPLETED_TRIPS: Record<string, {
-  driverName: string; avatar: string; from: string; to: string; date: string;
-}> = {
-  t3: { driverName: "王建國", avatar: "王", from: "新店總督府", to: "信義計畫區", date: "03/15" },
-  t4: { driverName: "林小雨", avatar: "林", from: "捷運市政府站", to: "南港軟體園區", date: "03/14" },
-  t5: { driverName: "張美玲", avatar: "張", from: "捷運市政府站", to: "南港軟體園區", date: "03/12" },
-};
+import { getBookingDetail } from "@/actions/bookings";
+import type { BookingDetailForReview } from "@/actions/bookings";
+import { createReview } from "@/actions/reviews";
 
 const QUICK_TAGS = [
   { id: "ontime",  label: "準時出發", icon: "⏰" },
@@ -46,29 +41,59 @@ function StarRow({ rating, setRating }: { rating: number; setRating: (n: number)
 }
 
 const ratingLabel = ["", "很差", "不太好", "普通", "不錯", "非常棒！"];
-const ratingColor = ["", "text-red-400", "text-orange-400", "text-yellow-500", "text-green-500", "text-green-600"];
+const ratingColor  = ["", "text-red-400", "text-orange-400", "text-yellow-500", "text-green-500", "text-green-600"];
 
 export default function ReviewPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const trip = MOCK_COMPLETED_TRIPS[id];
 
+  const [trip, setTrip] = useState<BookingDetailForReview | null | undefined>(undefined); // undefined=loading
   const [rating, setRating] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
   const [comment, setComment] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  useEffect(() => {
+    getBookingDetail(id).then(setTrip);
+  }, [id]);
 
   const toggleTag = (tagId: string) =>
     setTags((prev) => prev.includes(tagId) ? prev.filter((t) => t !== tagId) : [...prev, tagId]);
 
-  const handleSubmit = () => {
-    if (rating === 0) return;
+  const handleSubmit = async () => {
+    if (rating === 0 || !trip) return;
     setLoading(true);
-    setTimeout(() => { setLoading(false); setSubmitted(true); }, 1000);
+    setSubmitError("");
+    const result = await createReview({
+      bookingId: trip.bookingId,
+      rating,
+      tags,
+      comment,
+    });
+    setLoading(false);
+    if (result.success) {
+      setSubmitted(true);
+    } else {
+      setSubmitError(result.error ?? "送出失敗，請稍後再試");
+    }
   };
 
-  if (!trip) {
+  // 載入中
+  if (trip === undefined) {
+    return (
+      <div className="flex justify-center items-center min-h-full py-20">
+        <svg className="w-8 h-8 animate-spin text-green-400" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </div>
+    );
+  }
+
+  // 找不到行程
+  if (trip === null) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-20 px-6 text-center">
         <p className="text-gray-400 font-medium">找不到行程</p>
@@ -76,6 +101,11 @@ export default function ReviewPage() {
       </div>
     );
   }
+
+  const dateStr = (() => {
+    const dt = new Date(trip.departureTime);
+    return dt.toLocaleDateString("zh-TW", { month: "numeric", day: "numeric", timeZone: "Asia/Taipei" });
+  })();
 
   if (submitted) {
     return (
@@ -89,7 +119,7 @@ export default function ReviewPage() {
         <div className="mt-6 bg-white rounded-2xl shadow-sm p-5 w-full max-w-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold">
-              {trip.avatar}
+              {trip.driverName[0]}
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-700">{trip.driverName}</p>
@@ -135,14 +165,14 @@ export default function ReviewPage() {
           返回行程
         </Link>
         <h1 className="text-xl font-bold text-white">評價行程</h1>
-        <p className="text-white/70 text-sm mt-0.5">{trip.from} → {trip.to}・{trip.date}</p>
+        <p className="text-white/70 text-sm mt-0.5">{trip.from} → {trip.to}・{dateStr}</p>
       </div>
 
       <div className="flex-1 px-4 py-5 flex flex-col gap-4">
         {/* Driver info */}
         <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col items-center text-center">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white text-2xl font-bold mb-3">
-            {trip.avatar}
+            {trip.driverName[0]}
           </div>
           <p className="text-base font-bold text-gray-800">{trip.driverName}</p>
           <p className="text-xs text-gray-400 mt-0.5 mb-5">這次共乘體驗如何？</p>
@@ -196,6 +226,10 @@ export default function ReviewPage() {
           <span className="text-2xl flex-shrink-0">🌿</span>
           <p className="text-sm text-emerald-700">感謝您本次共乘，已為地球減少碳排放！您的評價也鼓勵更多人參與。</p>
         </div>
+
+        {submitError && (
+          <p className="text-red-500 text-sm text-center -mb-1">{submitError}</p>
+        )}
 
         <button
           onClick={handleSubmit}

@@ -19,7 +19,7 @@ function SuccessContent() {
 
   const amount = parseInt(searchParams.get("amount") || "0");
   const method = searchParams.get("method") || "credit";
-  const txId = "TX" + Math.floor(10000000 + Math.random() * 90000000);
+  const [txId] = useState(() => "TX" + Math.floor(10000000 + Math.random() * 90000000));
 
   useEffect(() => {
     const t = setTimeout(() => setShow(true), 100);

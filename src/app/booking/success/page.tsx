@@ -15,7 +15,7 @@ function SuccessContent() {
   const time = searchParams.get("time") || "";
   const co2 = searchParams.get("co2") || "0";
   const price = searchParams.get("price") || "0";
-  const bookingId = "JC" + Math.floor(100000 + Math.random() * 900000);
+  const [bookingId] = useState(() => "JC" + Math.floor(100000 + Math.random() * 900000));
 
   useEffect(() => {
     const t = setTimeout(() => setShow(true), 100);

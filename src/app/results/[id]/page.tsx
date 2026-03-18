@@ -1,7 +1,8 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { getRideById } from "@/lib/mockData";
+import { useEffect, useState } from "react";
+import { getRideDetail, type RideDetail } from "@/actions/rides";
 import Link from "next/link";
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
@@ -21,7 +22,23 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 export default function RideDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const ride = getRideById(params.id as string);
+  const [ride, setRide] = useState<RideDetail | null | undefined>(undefined);
+  const [seats, setSeats] = useState(1);
+
+  useEffect(() => {
+    getRideDetail(params.id as string).then(setRide);
+  }, [params.id]);
+
+  if (ride === undefined) {
+    return (
+      <div className="flex items-center justify-center min-h-full py-20">
+        <svg className="w-6 h-6 animate-spin text-green-500" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </div>
+    );
+  }
 
   if (!ride) {
     return (
@@ -37,7 +54,7 @@ export default function RideDetailPage() {
   });
 
   const handleBook = () => {
-    router.push(`/booking/confirm?rideId=${ride.id}&seats=1`);
+    router.push(`/booking/confirm?rideId=${ride.id}&seats=${seats}`);
   };
 
   return (
@@ -88,7 +105,6 @@ export default function RideDetailPage() {
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-gray-500 text-sm">{ride.to}</p>
-                <span className="text-gray-400 text-xs">{ride.duration} 分鐘車程</span>
               </div>
             </div>
           </div>
@@ -122,7 +138,7 @@ export default function RideDetailPage() {
           <InfoRow
             icon={<svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>}
             label="集合地點"
-            value={ride.meetingPoint}
+            value={ride.meetingPoint || "見詳情"}
           />
           <InfoRow
             icon={<svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8H3a2 2 0 00-2 2v6a2 2 0 002 2h2m7-2V8"/></svg>}
@@ -134,26 +150,61 @@ export default function RideDetailPage() {
             label="剩餘座位"
             value={`${ride.availableSeats} / ${ride.totalSeats} 座`}
           />
-          <InfoRow
-            icon={<svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>}
-            label="備註"
-            value={ride.notes}
-          />
+          {ride.notes && (
+            <InfoRow
+              icon={<svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>}
+              label="備註"
+              value={ride.notes}
+            />
+          )}
         </div>
       </div>
+
+      {/* Seat selector */}
+      {ride.availableSeats > 1 && (
+        <div className="px-4 mt-3">
+          <div className="bg-white rounded-2xl shadow-sm p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-gray-700">訂位人數</p>
+              <p className="text-xs text-gray-400 mt-0.5">最多可訂 {ride.availableSeats} 席</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSeats(s => Math.max(1, s - 1))}
+                disabled={seats <= 1}
+                className="w-9 h-9 rounded-xl bg-gray-100 text-gray-600 font-bold text-lg flex items-center justify-center disabled:opacity-40 active:scale-95 transition-all"
+              >
+                −
+              </button>
+              <span className="text-lg font-bold text-gray-800 w-6 text-center">{seats}</span>
+              <button
+                onClick={() => setSeats(s => Math.min(ride.availableSeats, s + 1))}
+                disabled={seats >= ride.availableSeats}
+                className="w-9 h-9 rounded-xl bg-green-600 text-white font-bold text-lg flex items-center justify-center disabled:opacity-40 active:scale-95 transition-all"
+              >
+                ＋
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom booking bar */}
       <div className="px-4 mt-4 mb-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center gap-4">
           <div>
             <p className="text-xs text-gray-400">費用</p>
-            <p className="text-2xl font-bold text-gray-800">NT${ride.price} <span className="text-sm font-normal text-gray-400">/ 人</span></p>
+            <p className="text-2xl font-bold text-gray-800">
+              NT${(ride.price * seats).toLocaleString()}
+              {seats > 1 && <span className="text-sm font-normal text-gray-400"> ({seats} 人)</span>}
+            </p>
           </div>
           <button
             onClick={handleBook}
-            className="flex-1 bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold py-3.5 rounded-xl shadow hover:from-green-700 hover:to-emerald-600 active:scale-95 transition-all"
+            disabled={ride.availableSeats === 0}
+            className="flex-1 bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold py-3.5 rounded-xl shadow hover:from-green-700 hover:to-emerald-600 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            立即預訂
+            {ride.availableSeats === 0 ? "已額滿" : "立即預訂"}
           </button>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
+import { createTopup } from "@/actions/wallet";
 import Link from "next/link";
 
 const PRESET_AMOUNTS = [100, 300, 500, 1000, 2000, 3000];
@@ -29,7 +30,7 @@ const payMethods: { id: PayMethod; label: string; sub: string; icon: React.React
 ];
 
 export default function TopupPage() {
-  const { user, isLoggedIn, addBalance } = useAuth();
+  const { user, isLoggedIn, refreshUser } = useAuth();
   const router = useRouter();
   const [amount, setAmount] = useState<number | "">("");
   const [custom, setCustom] = useState("");
@@ -47,14 +48,21 @@ export default function TopupPage() {
     setError("");
   };
 
-  const handleTopup = () => {
+  const handleTopup = async () => {
     if (finalAmount < 100) { setError("最低儲值金額為 NT$ 100"); return; }
     if (finalAmount > 10000) { setError("單次儲值上限為 NT$ 10,000"); return; }
     setLoading(true);
-    setTimeout(() => {
-      addBalance(finalAmount);
-      router.push(`/wallet/topup/success?amount=${finalAmount}&method=${method}`);
-    }, 1500);
+    setError("");
+
+    const result = await createTopup(finalAmount, method);
+    if (!result.success) {
+      setError(result.error ?? "儲值失敗，請稍後再試");
+      setLoading(false);
+      return;
+    }
+
+    await refreshUser();
+    router.push(`/wallet/topup/success?amount=${finalAmount}&method=${method}`);
   };
 
   if (!isLoggedIn) {
@@ -151,6 +159,13 @@ export default function TopupPage() {
             ))}
           </div>
         </div>
+
+        {/* 錯誤訊息 */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600 text-center">
+            {error}
+          </div>
+        )}
 
         {/* Confirm button */}
         <button

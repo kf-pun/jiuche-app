@@ -155,7 +155,6 @@ function ResultsContent() {
   const [timeRange, setTimeRange] = useState<string>("all");
 
   useEffect(() => {
-    setLoading(true);
     searchRides(from, to, date).then((result) => {
       setRides(result);
       setLoading(false);

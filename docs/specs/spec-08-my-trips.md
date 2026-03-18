@@ -1,8 +1,8 @@
 # 我的行程 功能規格書
 
-**版本：** v1.0
-**日期：** 2026-03-17
-**狀態：** 已確認
+**版本：** v1.1
+**日期：** 2026-03-18
+**狀態：** S5-1 完成（真實資料串接）
 
 ---
 
@@ -106,11 +106,12 @@
 
 ## 6. 資料說明
 
-- **行程資料**：來自頁面內 `mockTrips`（5 筆），**與 `mockData.ts` 無關，為獨立 mock**
-- 5 筆涵蓋：confirmed×1、pending×1、completed×2（司機+乘客各一）、cancelled×1
-- 累計減碳：`mockTrips.filter(completed).reduce(co2Saved)` = 3.0 kg CO₂
-- 完成趟數：`history.filter(completed).length` = 2 趟
-- 行程資料欄位：`id, type, driverName?, passengerCount?, from, to, date, time, price, co2Saved, status, bookingId`
+- **乘客行程**：`getUserBookings()` — `src/actions/bookings.ts`，JOIN rides + users（司機）
+- **司機行程**：`getUserRides()` — `src/actions/bookings.ts`，查詢 `rides.driver_id = user.id`
+- **評價頁**：`getBookingDetail(bookingId)` — 取得行程基本資訊（from/to/司機名）
+- rides.status `active` → TripStatus `confirmed`（即將出發）
+- CO₂ 計算：乘客端 = `booking.seats × 0.6`；司機端 = `ride.co2_saved`（總座位 × 0.6）
+- 累計減碳 / 完成趟數：從真實 trips 陣列動態計算
 
 ---
 

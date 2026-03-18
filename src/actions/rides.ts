@@ -87,6 +87,85 @@ export async function searchRides(
   });
 }
 
+// ── Get Ride Detail ──────────────────────────────────────────────────────────
+
+export interface RideDetail {
+  id: string;
+  from: string;
+  to: string;
+  date: string;           // YYYY-MM-DD
+  departureTime: string;  // HH:MM
+  price: number;
+  availableSeats: number;
+  totalSeats: number;
+  co2Saved: number;
+  meetingPoint: string;
+  carModel: string;
+  notes: string;
+  driver: {
+    id: string;
+    name: string;
+    avatar: string;
+    company: string;
+    rating: number;
+    totalRides: number;
+  };
+}
+
+export async function getRideDetail(id: string): Promise<RideDetail | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("rides")
+    .select(`
+      id, from_location, to_location, departure_time,
+      price, total_seats, available_seats, co2_saved,
+      meeting_point, notes,
+      driver:users!driver_id (id, name, company, rating, rating_count, vehicle_type, vehicle_color)
+    `)
+    .eq("id", id)
+    .single();
+
+  if (error || !data) return null;
+
+  const d = data.driver as unknown as {
+    id: string; name: string; company: string; rating: number;
+    rating_count: number; vehicle_type: string | null; vehicle_color: string | null;
+  } | null;
+
+  // 轉台灣時間
+  const tw = new Date(new Date(data.departure_time).getTime() + 8 * 3600000);
+  const date = `${tw.getUTCFullYear()}-${(tw.getUTCMonth() + 1).toString().padStart(2, "0")}-${tw.getUTCDate().toString().padStart(2, "0")}`;
+  const time = `${tw.getUTCHours().toString().padStart(2, "0")}:${tw.getUTCMinutes().toString().padStart(2, "0")}`;
+
+  const carParts = [d?.vehicle_type, d?.vehicle_color].filter(Boolean).join(" · ");
+
+  return {
+    id: data.id,
+    from: data.from_location,
+    to: data.to_location,
+    date,
+    departureTime: time,
+    price: data.price,
+    availableSeats: data.available_seats,
+    totalSeats: data.total_seats,
+    co2Saved: Number(data.co2_saved),
+    meetingPoint: data.meeting_point || "",
+    carModel: carParts || "未填寫",
+    notes: data.notes || "",
+    driver: {
+      id: d?.id ?? "",
+      name: d?.name ?? "未知",
+      avatar: (d?.name ?? "?")[0],
+      company: d?.company ?? "",
+      rating: Number(d?.rating ?? 0),
+      totalRides: d?.rating_count ?? 0,
+    },
+  };
+}
+
+// ── Create Ride ──────────────────────────────────────────────────────────────
+
 export interface CreateRideInput {
   from: string;
   to: string;

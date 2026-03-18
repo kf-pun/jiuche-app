@@ -2,39 +2,68 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
-import { getRideById } from "@/lib/mockData";
-import { Suspense, useState } from "react";
+import { getRideDetail, type RideDetail } from "@/actions/rides";
+import { createBooking } from "@/actions/bookings";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 
 function ConfirmContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user, isLoggedIn, deductBalance } = useAuth();
+  const { user, isLoggedIn, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [ride, setRide] = useState<RideDetail | null | undefined>(undefined);
+  const [error, setError] = useState("");
 
-  const rideId    = searchParams.get("rideId") || "";
-  const seats     = parseInt(searchParams.get("seats") || "1");
-  const ride      = getRideById(rideId);
+  const rideId = searchParams.get("rideId") || "";
+  const seats  = parseInt(searchParams.get("seats") || "1");
 
-  if (!ride) return (
-    <div className="flex flex-col items-center justify-center min-h-full py-20">
-      <p className="text-gray-400">找不到行程資訊</p>
-      <Link href="/" className="mt-4 text-green-600 text-sm">返回首頁</Link>
-    </div>
-  );
+  useEffect(() => {
+    getRideDetail(rideId).then(setRide);
+  }, [rideId]);
 
-  const total      = ride.price * seats;
-  const hasEnough  = (user?.balance ?? 0) >= total;
+  if (ride === undefined) {
+    return (
+      <div className="flex items-center justify-center min-h-full py-20">
+        <svg className="w-6 h-6 animate-spin text-green-500" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </div>
+    );
+  }
 
-  const handlePay = () => {
-    if (!hasEnough) return;
+  if (!ride) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full py-20">
+        <p className="text-gray-400">找不到行程資訊</p>
+        <Link href="/" className="mt-4 text-green-600 text-sm">返回首頁</Link>
+      </div>
+    );
+  }
+
+  const total     = ride.price * seats;
+  const hasEnough = (user?.balance ?? 0) >= total;
+
+  const handlePay = async () => {
+    if (!hasEnough || !isLoggedIn) return;
     setLoading(true);
-    setTimeout(() => {
-      deductBalance(total);
-      router.push(
-        `/booking/success?rideId=${ride.id}&driverName=${encodeURIComponent(ride.driver.name)}&from=${encodeURIComponent(ride.from)}&to=${encodeURIComponent(ride.to)}&time=${ride.departureTime}&co2=${ride.co2Saved}&price=${total}`
-      );
-    }, 1200);
+    setError("");
+
+    const result = await createBooking(rideId, seats);
+
+    if (!result.success) {
+      setError(result.error ?? "預訂失敗，請稍後再試");
+      setLoading(false);
+      return;
+    }
+
+    // 重新載入餘額（已由 server action 更新）
+    await refreshUser();
+
+    router.push(
+      `/booking/success?rideId=${ride.id}&driverName=${encodeURIComponent(ride.driver.name)}&from=${encodeURIComponent(ride.from)}&to=${encodeURIComponent(ride.to)}&time=${ride.departureTime}&co2=${ride.co2Saved}&price=${total}`
+    );
   };
 
   return (
@@ -77,10 +106,12 @@ function ConfirmContent() {
             </div>
           </div>
 
-          <div className="pt-3 border-t border-gray-50 flex items-center justify-between text-xs text-gray-400">
-            <span>{ride.meetingPoint}</span>
-            <span>集合地點</span>
-          </div>
+          {ride.meetingPoint && (
+            <div className="pt-3 border-t border-gray-50 flex items-center justify-between text-xs text-gray-400">
+              <span>{ride.meetingPoint}</span>
+              <span>集合地點</span>
+            </div>
+          )}
         </div>
 
         {/* 費用明細 */}
@@ -140,6 +171,13 @@ function ConfirmContent() {
             這趟共乘預估減少 <span className="font-bold">{ride.co2Saved} kg CO₂</span>，感謝您的環保行動！
           </p>
         </div>
+
+        {/* 錯誤訊息 */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600 text-center">
+            {error}
+          </div>
+        )}
 
         {/* Pay button */}
         <button

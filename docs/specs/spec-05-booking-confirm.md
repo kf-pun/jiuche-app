@@ -1,7 +1,7 @@
 # 預訂確認 功能規格書
 
-**版本：** v1.0
-**日期：** 2026-03-17
+**版本：** v1.1
+**日期：** 2026-03-18
 **狀態：** 已確認
 
 ---
@@ -35,12 +35,15 @@
   - 餘額充足：顯示現有餘額與付款後剩餘金額
   - 餘額不足：紅色警示 + 「立即儲值」按鈕（連結 `/wallet/topup`）
 - ESG 減碳提示卡（預估減少 X kg CO₂）
-- 「確認付款」按鈕：按下後 1.2 秒 loading 動畫，再執行 `deductBalance()` 並跳轉至成功頁
+- 「確認付款」按鈕：付款中顯示 loading spinner
 - 付款按鈕 disabled 條件：餘額不足 / 付款中 / 未登入
 - 返回行程詳情的連結
+- **[S4-1 新增]** 行程資料從 DB 查詢（`getRideDetail()`），不再使用 mockData；含 loading 狀態
+- **[S4-1 新增]** 付款改呼叫 `createBooking()` Server Action（寫 bookings + 扣座位 + 寫 wallet_transactions + 更新 balance）；成功後呼叫 `refreshUser()` 同步餘額
+- **[S4-1 新增]** Server Action 回傳錯誤時顯示紅色提示訊息（例：座位不足、餘額不足）
 
 ### 待製作
-- 座位數選擇（目前從行程詳情頁帶入，固定為 1 人，若使用者想訂 2 席，目前無法操作）
+（無，座位選擇已移至行程詳情頁實作）
 
 ---
 
@@ -88,12 +91,12 @@
 
 ## 6. 資料說明
 
-- **行程資料**：來自 `mockData.ts`，透過 `getRideById(rideId)` 取得
+- **行程資料**：透過 `getRideDetail(rideId)` Server Action 從 `rides` 表查詢
 - **使用者資料**：來自 `authContext`（`user.balance`）
-- **扣款**：呼叫 `authContext.deductBalance(total)`，結果更新至 `authContext` 並持久化至 `localStorage`（key: `jiuche_user`）
+- **預訂與扣款**：呼叫 `createBooking(rideId, seats)` Server Action（`src/actions/bookings.ts`），執行：①建立 bookings 記錄 ②扣 available_seats ③寫 wallet_transactions(payment) ④更新 users.balance；成功後呼叫 `refreshUser()` 同步前端狀態
 - **URL 參數**：
-  - `rideId`：行程 ID（如 `ride-001`）
-  - `seats`：乘客人數（整數，預設 1）
+  - `rideId`：行程 UUID（來自 DB）
+  - `seats`：乘客人數（整數，由詳情頁選擇，預設 1）
 - **成功頁傳遞參數**（URL query）：`rideId`, `driverName`, `from`, `to`, `time`, `co2`, `price`
 
 ---
@@ -118,6 +121,8 @@
 
 ---
 
-## 9. 待確認事項
+## 9. 備註
 
-- **Q1**：目前乘客人數（`seats`）固定為 1，如果同行 2 人想同時預訂 2 席，流程要在哪裡讓使用者選？（行程詳情頁？還是確認頁本身加一個人數調整器？）
+- 座位數選擇已在行程詳情頁（`/results/[id]`）實作，以 URL params（`seats=N`）帶入確認頁。
+- 服務費固定顯示 NT$0，正式上線時需串接真實計費邏輯。
+- 訂單編號在**成功頁**以 `"JC" + random 6位數` 前端產生，正式版需由後端生成並從 bookings 表讀取。

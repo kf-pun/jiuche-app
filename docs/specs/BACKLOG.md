@@ -129,9 +129,9 @@ May 19 ■    Sprint 10 Google Maps 深度整合
 | S10-4 | **合法油資上限計算 + 費用拆分** | 發布共乘頁依 Directions API 距離計算法定油資上限（油耗 × 油價 ÷ 乘客數）；票價不得超上限；預訂確認頁拆顯油資 + 服務費；企業員工服務費 $0 | 🔲 待開發 |
 | S10-5 | **DB Migration** | `supabase/migrations/002_add_map_fields.sql`；`rides` 新增地圖欄位 + `fare_limit`；`bookings` 新增 `service_fee`；`companies` 新增 `subscription_active` / `subscription_expires_at` | 🔲 待開發 |
 
-> **待確認（開發前需決定）：**
-> - 油耗係數（0.1 L/km）與油價（$32/L）是否合理？是否讓司機填入自己車輛的油耗？
-> - 平台服務費 $15/趟 是否為正確金額？是否依距離分級？
+> **已確認：**
+> - 油耗依車型類別查官方表（8 種），司機不得自填；油價預設 $32/L 後台可調
+> - 服務費採方案 B 三段分級：$10（≤10km）/ $15（11–30km）/ $20（>30km）
 
 ---
 

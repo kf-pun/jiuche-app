@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthGuard from "@/components/AuthGuard";
+import { createRide } from "@/actions/rides";
 
 const timeSlots = ["07:00", "07:30", "08:00", "08:15", "08:30", "09:00", "09:30", "17:30", "18:00", "18:30", "19:00"];
 
@@ -11,6 +12,7 @@ function PostRidePage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const [form, setForm] = useState({
     from: "",
@@ -32,12 +34,22 @@ function PostRidePage() {
   const step1Valid = form.from && form.to && form.date && form.time;
   const step2Valid = form.price && form.meetingPoint;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!step2Valid) return;
     setLoading(true);
-    setTimeout(() => {
-      router.push(`/post/success?from=${encodeURIComponent(form.from)}&to=${encodeURIComponent(form.to)}&time=${form.time}&seats=${form.seats}&price=${form.price}`);
-    }, 1200);
+    setSubmitError("");
+
+    const result = await createRide(form);
+
+    if (!result.success) {
+      setSubmitError(result.error || "發布失敗，請再試一次");
+      setLoading(false);
+      return;
+    }
+
+    router.push(
+      `/post/success?from=${encodeURIComponent(form.from)}&to=${encodeURIComponent(form.to)}&time=${form.time}&seats=${form.seats}&price=${form.price}`
+    );
   };
 
   return (
@@ -299,6 +311,10 @@ function PostRidePage() {
                 </p>
               </div>
             </div>
+
+            {submitError && (
+              <p className="text-red-500 text-sm text-center">{submitError}</p>
+            )}
 
             <div className="flex gap-3">
               <button

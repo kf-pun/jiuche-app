@@ -1,8 +1,8 @@
 # 發布共乘 功能規格書
 
-**版本：** v1.0
-**日期：** 2026-03-17
-**狀態：** 已確認
+**版本：** v1.1
+**日期：** 2026-03-18
+**狀態：** S3-1 已完成（真實 DB 寫入）
 
 ---
 
@@ -44,12 +44,13 @@
   - 集合地點（textarea，必填）
   - 備註（textarea，選填）
   - ESG 預估卡：`seats × 0.6 kg CO₂`
-- 「發布行程」按鈕：1.2 秒 loading 後跳轉至成功頁
+- 「發布行程」按鈕：送出時 loading spinner，呼叫 `createRide()` Server Action 寫入 Supabase `rides` 表，成功後跳轉至成功頁，失敗顯示錯誤訊息
 - **發布成功頁 `/post/success`：** 動畫 + 發布摘要卡 + 通知卡 + 操作按鈕
+- **真實 DB 寫入（S3-1）：** `src/actions/rides.ts` `createRide()`，取得 Supabase Auth user、組合台灣時區 ISO 時間、CO₂ = seats × 0.6 kg 入庫
 
 ### 待製作
 - 時間槽目前固定 11 個（07:00～09:30 + 17:30～19:00），無法自由輸入時間
-- 固定班表 toggle 目前僅儲存為 form state，送出後不影響任何邏輯（視覺展示用）
+- 固定班表 toggle 目前僅儲存 `is_recurring` 欄位，`recurring_days` 為 null（排程邏輯 Sprint 8+ 再做）
 
 ---
 
@@ -110,9 +111,14 @@
 
 - 表單資料僅存於 component state（`useState`），**不寫入 localStorage**
 - 發布後資料透過 URL query 傳遞至成功頁（`from`, `to`, `time`, `seats`, `price`）
-- 行程**不會寫入 mockData.ts**，重整後消失（Prototype 展示用）
-- ESG 估算：`seats × 0.6 kg CO₂`，假資料，正式需依路程距離計算
+- **行程寫入 Supabase `rides` 表**（S3-1 完成後取代 mockData）：
+  - `driver_id`：Supabase Auth 當前用戶 ID
+  - `departure_time`：`${date}T${time}:00+08:00` 轉 ISO UTC
+  - `total_seats` = `available_seats` = parseInt(seats)
+  - `co2_saved` = seats × 0.6（固定估算，正式需依距離計算）
+  - `status` = `"active"`
 - 時間槽固定清單：`["07:00","07:30","08:00","08:15","08:30","09:00","09:30","17:30","18:00","18:30","19:00"]`
+- Server Action 路徑：`src/actions/rides.ts` → `createRide()`
 
 ---
 
@@ -130,10 +136,10 @@
 
 ## 8. 備註
 
-- 固定班表 toggle 目前為視覺展示，不影響任何實際邏輯，正式版需串接排程系統
-- 發布的行程不會出現在搜尋結果（mockData.ts 不動態更新），Prototype 僅展示發布流程
+- 固定班表 toggle 目前寫入 `is_recurring` 欄位，但排程邏輯（自動重複建立行程）待 Sprint 8+ 實作
+- 發布的行程寫入 DB 後，可在搜尋結果（S3-2）以相同起訖點查詢到
 - 「通知已開啟」為假狀態展示，正式需串接推播通知授權
-- ESG 估算公式 `seats × 0.6` 為假資料，正式應依路程距離動態計算
+- ESG 估算公式 `seats × 0.6` 為固定係數，正式應依路程距離動態計算
 
 ---
 

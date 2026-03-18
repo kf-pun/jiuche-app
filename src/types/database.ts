@@ -33,6 +33,7 @@ export interface RideRow {
   is_recurring: boolean
   recurring_days: string[] | null
   co2_saved: number
+  meeting_point: string | null
   notes: string | null
   status: 'active' | 'cancelled' | 'completed'
   created_at: string

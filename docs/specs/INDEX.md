@@ -77,6 +77,12 @@
 | 30 | 司機歷史評價列表 | `/results/[id]` | [spec-19-driver-reviews.md](./spec-19-driver-reviews.md) | 已完成 |
 | 31 | UX 補完（空狀態/驗證/無障礙） | 多頁面 | [spec-20-ux-improvements.md](./spec-20-ux-improvements.md) | 已完成 |
 
+### 🟠 Sprint 10 — Google Maps 深度整合
+
+| 優先 | 功能名稱 | 路由 | 規格書 | 狀態 |
+|------|----------|------|--------|------|
+| 34 | Google Maps 深度整合（地圖選點 / GPS / 路線 / 車費估算） | `/`、`/post`、`/results/[id]` | [spec-22-google-maps-integration.md](./spec-22-google-maps-integration.md) | 已確認 |
+
 ---
 
 ## 共用元件
@@ -97,5 +103,5 @@
 | 待撰寫 | 尚未建立規格書 |
 | 草稿 | 規格書已建立，尚未確認 |
 | 審閱中 | 等待確認 |
-| 已完成 | 可以開始開發 |
+| 已確認 | 可以開始開發 |
 | 已完成 | 開發完成，規格書已更新 |

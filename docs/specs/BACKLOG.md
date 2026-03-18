@@ -1,7 +1,7 @@
 # 揪車 JiuChe — 開發 Backlog 與時程規劃
 
-**更新日期：** 2026-03-18（最後更新：Sprint 9 全部完成）
-**目標上線：** 2026-05-12（因加入後台系統，延後一週）
+**更新日期：** 2026-03-18（最後更新：Sprint 10 規格書建立）
+**目標上線：** 2026-05-19（Sprint 10 Google Maps 深度整合）
 
 ---
 
@@ -16,7 +16,8 @@ Apr 14 ████ Sprint 5  資料一致性
 Apr 21 ████ Sprint 6  後台 P0（架構 + 核心客服功能）
 Apr 28 ████ Sprint 7  後台 P1 + 支付
 May 05 ████ Sprint 8  後台 P2 + 體驗補完
-May 12 ■    Sprint 9  後台 P3（B2B）+ 部署
+May 12 ████ Sprint 9  後台 P3（B2B）+ 部署
+May 19 ■    Sprint 10 Google Maps 深度整合
 ```
 
 > **時程說明：** 後台管理系統於 Sprint 4 完成（真實 bookings/wallet 資料入庫）後開始建置，確保後台有真實資料可操作。目標上線調整為 5/12。
@@ -115,6 +116,23 @@ May 12 ■    Sprint 9  後台 P3（B2B）+ 部署
 | S9-2 | **Google OAuth 串接** | Supabase Auth 內建，設定即可 | ✅ 完成 |
 | S9-3 | **Vercel 部署** | 環境變數設定（Supabase URL/Key、SMS、Google Maps、ECPay）；前台 + 後台同一 repo 部署 | ✅ 完成 |
 | S9-4 | **E2E 流程驗收** | 前台：搜尋 → 預訂 → 付款 → 評價 → ESG；後台：訂單管理 → 退款 → 通知 → ESG 報告匯出 | ✅ 完成 |
+
+---
+
+## Sprint 10｜May 19　Google Maps 深度整合
+
+| # | 任務 | 說明 | 狀態 |
+|---|------|------|------|
+| S10-1 | **GPS 定位按鈕** | 首頁與發布行程出發地欄位旁新增「📍 定位」按鈕；Browser Geolocation API + Geocoding API 反查地址 | 🔲 待開發 |
+| S10-2 | **地圖選點 Modal** | 共用 `MapPickerModal` 元件；點擊地圖或拖曳大頭針選點；帶回地址文字與座標；`/api/geocode` 代理路由 | 🔲 待開發 |
+| S10-3 | **行程詳情路線地圖** | `/results/[id]` 新增路線地圖卡片（200px）；Directions API 計算路線藍線 + 距離 + 行車時間；`/api/directions` 代理路由 | 🔲 待開發 |
+| S10-4 | **車費自動估算** | 發布共乘頁依距離計算建議票價（`$50 + $8/km`）；司機可手動調整 | 🔲 待開發 |
+| S10-5 | **DB Migration** | `supabase/migrations/002_add_map_fields.sql`；`rides` 表新增 `origin_lat/lng`、`destination_lat/lng`、`distance_km`、`duration_minutes`（全部可 NULL） | 🔲 待開發 |
+
+> **待確認（開發前需決定）：**
+> - 地圖選點 Modal 內是否同時提供搜尋框？
+> - 車費公式 `$50 + $8/km` 是否符合預期？
+> - GPS 定位是否僅用於出發地？
 
 ---
 

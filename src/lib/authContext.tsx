@@ -47,7 +47,7 @@ interface AuthContextType {
   isLoggedIn: boolean;
   authLoading: boolean;
   logout: () => void;
-  updateUser: (data: Partial<User>) => void;
+  updateUser: (data: Partial<User>) => Promise<void>;
   deductBalance: (amount: number) => boolean;
   addBalance: (amount: number) => void;
   refreshUser: () => Promise<void>;
@@ -97,11 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const updateUser = (data: Partial<User>) => {
+  const updateUser = async (data: Partial<User>) => {
     if (!user) return;
     const updated = { ...user, ...data };
     setUser(updated);
-    supabase.from("users").update({
+    await supabase.from("users").update({
       name: updated.name,
       company: updated.company,
       is_driver: updated.isDriver,

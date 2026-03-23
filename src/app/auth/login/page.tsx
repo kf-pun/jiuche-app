@@ -182,7 +182,7 @@ function LoginContent() {
           </svg>
         </div>
         <h1 className="text-3xl font-bold text-white">揪車</h1>
-        <p className="text-white/70 text-sm mt-1">企業 ESG 減碳共乘平台</p>
+        <p className="text-white/70 text-sm mt-1">減碳共乘平台</p>
       </div>
 
       {/* Card */}

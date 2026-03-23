@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
+import { updateUserProfile } from "@/actions/users";
 import { VEHICLE_TYPES } from "@/lib/fareUtils";
 import Link from "next/link";
 
 export default function ProfileEditPage() {
-  const { user, isLoggedIn, updateUser } = useAuth();
+  const { user, isLoggedIn, refreshUser } = useAuth();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -39,24 +40,26 @@ export default function ProfileEditPage() {
 
   const set = (k: string, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
-    setTimeout(() => {
-      updateUser({
-        name: form.name.trim(),
-        avatar: form.name.trim()[0],
-        company: form.company.trim(),
-        isDriver: form.isDriver,
-        vehicleType: form.isDriver ? form.vehicleType : "",
-        carModel:    form.isDriver ? form.carModel    : "",
-        carPlate:    form.isDriver ? form.carPlate    : "",
-        carColor:    form.isDriver ? form.carColor    : "",
-      });
+    const result = await updateUserProfile({
+      name: form.name.trim(),
+      company: form.company.trim(),
+      isDriver: form.isDriver,
+      vehicleType: form.vehicleType,
+      carModel: form.carModel,
+      carPlate: form.carPlate,
+      carColor: form.carColor,
+    });
+    if (!result.success) {
       setSaving(false);
-      setSaved(true);
-      setTimeout(() => router.push("/profile"), 800);
-    }, 900);
+      return;
+    }
+    await refreshUser();
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => router.push("/profile"), 800);
   };
 
   if (!isLoggedIn) {

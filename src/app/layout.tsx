@@ -10,7 +10,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "揪車 JiuChe — 企業 ESG 減碳共乘平台",
+  title: "揪車 JiuChe — 減碳共乘平台",
   description: "企業員工智慧共乘，共同減碳，邁向 ESG 永續目標",
 };
 

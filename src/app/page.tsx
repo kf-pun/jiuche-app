@@ -76,7 +76,7 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white tracking-wide">揪車 JiuChe</h1>
-            <p className="text-green-100 text-xs">企業 ESG 減碳共乘平台</p>
+            <p className="text-green-100 text-xs">減碳共乘平台</p>
           </div>
         </div>
         <p className="text-white/80 text-sm mt-4">

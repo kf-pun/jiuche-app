@@ -4,8 +4,9 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { createClient } from "@/lib/supabase/client";
+import { ensureDevUser } from "@/actions/auth";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = true; // Prototype mode: OTP bypass enabled (use 888888)
 const DEV_OTP = "888888";
 
 const SITE_URL =
@@ -115,13 +116,15 @@ function LoginContent() {
         document.getElementById("otp-0")?.focus();
         return;
       }
-      const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously();
-      if (anonError || !anonData.user) {
+      // 確保此電話號碼對應的 dev user 存在（固定 email/password，同一手機永遠同一個 auth user）
+      const { email, password } = await ensureDevUser(phone);
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError || !signInData.user) {
         setVerifying(false);
-        setError("開發模式登入失敗，請確認 Supabase 已開啟 Anonymous sign-in");
+        setError("開發模式登入失敗，請稍後再試");
         return;
       }
-      userId = anonData.user.id;
+      userId = signInData.user.id;
     } else {
       const { data, error: verifyError } = await supabase.auth.verifyOtp({
         phone: toE164(phone),
@@ -160,7 +163,17 @@ function LoginContent() {
   return (
     <div className="flex flex-col min-h-full bg-gradient-to-b from-green-600 to-emerald-500">
       {/* Top branding */}
-      <div className="flex flex-col items-center pt-16 pb-10 px-6">
+      <div className="flex flex-col items-center pt-16 pb-10 px-6 relative">
+        <button
+          onClick={() => router.back()}
+          aria-label="返回上一頁"
+          className="absolute top-4 left-0 flex items-center gap-1 text-white/70 text-sm hover:text-white transition-colors px-2 py-1"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          返回
+        </button>
         <div className="bg-white/20 rounded-2xl p-4 mb-4">
           <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c-4.97 4.97-4.97 13.03 0 18 4.97-4.97 4.97-13.03 0-18z" />
@@ -238,9 +251,9 @@ function LoginContent() {
 
             <p className="text-center text-xs text-gray-400 mt-6">
               登入即表示您同意{" "}
-              <span className="text-green-600 underline cursor-pointer">服務條款</span>
+              <button onClick={() => alert("服務條款功能開發中，敬請期待。")} className="text-green-600 underline">服務條款</button>
               {" "}與{" "}
-              <span className="text-green-600 underline cursor-pointer">隱私政策</span>
+              <button onClick={() => alert("隱私政策功能開發中，敬請期待。")} className="text-green-600 underline">隱私政策</button>
             </p>
           </>
         )}

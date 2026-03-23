@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { createClient } from "@/lib/supabase/client";
@@ -32,7 +32,7 @@ function Field({ label, field, placeholder, hint, form, errors, set, transform }
 function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { refreshUser } = useAuth();
+  const { refreshUser, isLoggedIn, authLoading } = useAuth();
   const supabase = createClient();
   const phone = searchParams.get("phone") || "";
 
@@ -40,12 +40,17 @@ function RegisterContent() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 保護：已有 profile 的用戶跳回首頁（authContext 的 isLoggedIn 代表有 users 資料列）
+  useEffect(() => {
+    if (authLoading) return;
+    if (isLoggedIn) router.replace("/");
+  }, [isLoggedIn, authLoading, router]);
+
   const set = (k: string, v: string | boolean) => { setForm((p) => ({ ...p, [k]: v })); setErrors((e) => ({ ...e, [k]: "" })); };
 
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.name.trim()) e.name = "請輸入姓名";
-    if (!form.company.trim()) e.company = "請輸入公司名稱";
     if (form.isDriver) {
       if (!form.carModel.trim()) e.carModel = "請輸入車型";
       if (!form.carPlate.trim()) e.carPlate = "請輸入車牌號碼";
@@ -64,7 +69,8 @@ function RegisterContent() {
     if (!validate()) return;
     setLoading(true);
 
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const authUser = session?.user;
     if (!authUser) {
       setErrors({ name: "Session 已過期，請重新登入" });
       setLoading(false);
@@ -88,7 +94,8 @@ function RegisterContent() {
     });
 
     if (error) {
-      setErrors({ name: "建立帳號失敗，請稍後再試" });
+      const isDuplicatePhone = error.message?.includes("users_phone_key") || error.code === "23505";
+      setErrors({ name: isDuplicatePhone ? "此手機號碼已被使用，請使用其他號碼或聯絡客服" : "建立帳號失敗，請稍後再試" });
       setLoading(false);
       return;
     }
@@ -115,7 +122,7 @@ function RegisterContent() {
         <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col gap-4">
           <h3 className="text-sm font-semibold text-gray-700">基本資料</h3>
           <Field label="姓名" field="name" placeholder="請輸入您的姓名" form={form} errors={errors} set={set} />
-          <Field label="公司 / 機構" field="company" placeholder="例：台積電、聯發科" hint="用於媒合同公司同事共乘" form={form} errors={errors} set={set} />
+          <Field label="公司 / 機構（選填）" field="company" placeholder="例：台積電、聯發科" hint="填寫後可媒合同公司同事共乘" form={form} errors={errors} set={set} />
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col gap-4">

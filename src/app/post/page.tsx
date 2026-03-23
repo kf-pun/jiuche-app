@@ -1,20 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthGuard from "@/components/AuthGuard";
+import { useAuth } from "@/lib/authContext";
 import { createRide } from "@/actions/rides";
+import { getFareConfig } from "@/actions/systemConfig";
+import { calcFareLimit, type VehicleType } from "@/lib/fareUtils";
 import PlacesAutocomplete from "@/components/PlacesAutocomplete";
+import GpsButton from "@/components/GpsButton";
+import dynamic from "next/dynamic";
+const MapPickerModal = dynamic(() => import("@/components/MapPickerModal"), { ssr: false });
 
-const timeSlots = ["07:00", "07:30", "08:00", "08:15", "08:30", "09:00", "09:30", "17:30", "18:00", "18:30", "19:00"];
+type DateMode = "single" | "weekdays" | "daily";
 
 function PostRidePage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [mapTarget, setMapTarget] = useState<"from" | "to" | null>(null);
 
+  // 路線資訊（透過 Directions API 取得）
+  const [routeInfo, setRouteInfo] = useState<{
+    distanceKm: number;
+    durationMinutes: number;
+    distanceText: string;
+    durationText: string;
+  } | null>(null);
+  const [fareLimit, setFareLimit] = useState<number | null>(null);
+  const routeFetchRef = useRef<AbortController | null>(null);
+
+  const [dateMode, setDateMode] = useState<DateMode>("single");
   const [form, setForm] = useState({
     from: "",
     to: "",
@@ -25,27 +44,92 @@ function PostRidePage() {
     meetingPoint: "",
     notes: "",
     recurring: false,
+    originLat: null as number | null,
+    originLng: null as number | null,
+    destinationLat: null as number | null,
+    destinationLng: null as number | null,
   });
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const touch = (key: string) => setTouched((prev) => ({ ...prev, [key]: true }));
   const fieldErr = (key: string, invalid: boolean) =>
-    touched[key] && invalid ? "block text-red-500 text-xs mt-1" : "hidden";
+    `block text-red-500 text-xs mt-1 ${touched[key] && invalid ? "visible" : "invisible"}`;
 
   const today = new Date().toISOString().split("T")[0];
 
   const set = (key: string, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const step1Valid = form.from && form.to && form.date && form.time;
-  const step2Valid = form.price && form.meetingPoint;
+  // 自動計算路線資訊（有座標時）
+  useEffect(() => {
+    if (
+      form.originLat == null || form.originLng == null ||
+      form.destinationLat == null || form.destinationLng == null
+    ) {
+      setRouteInfo(null);
+      setFareLimit(null);
+      return;
+    }
+
+    if (routeFetchRef.current) routeFetchRef.current.abort();
+    const controller = new AbortController();
+    routeFetchRef.current = controller;
+
+    const seats = parseInt(form.seats) || 1;
+
+    fetch(
+      `/api/directions?origin=${form.originLat},${form.originLng}&destination=${form.destinationLat},${form.destinationLng}`,
+      { signal: controller.signal }
+    )
+      .then((r) => r.json())
+      .then(async (data) => {
+        if (!data.route) return;
+        const distanceKm = data.route.distanceValue / 1000;
+        const durationMinutes = Math.round(data.route.durationValue / 60);
+
+        setRouteInfo({
+          distanceKm,
+          durationMinutes,
+          distanceText: data.route.distanceText,
+          durationText: data.route.durationText,
+        });
+
+        // 計算油資上限
+        const config = await getFareConfig();
+        const limit = calcFareLimit(
+          distanceKm,
+          (user?.carModel as VehicleType | null) ?? null,
+          config.fuelPrice95,
+          config.fuelPrice98,
+          seats
+        );
+        setFareLimit(limit);
+      })
+      .catch(() => {/* aborted or error — ignore */});
+
+    return () => controller.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.originLat, form.originLng, form.destinationLat, form.destinationLng, form.seats]);
+
+  const priceNum = parseInt(form.price) || 0;
+  const priceOverLimit = fareLimit != null && priceNum > fareLimit;
+
+  const step1Valid = form.from && form.to && form.time && (dateMode !== "single" || form.date);
+  const step2Valid = form.price && form.meetingPoint && !priceOverLimit;
 
   const handleSubmit = async () => {
     if (!step2Valid) return;
     setLoading(true);
     setSubmitError("");
 
-    const result = await createRide(form);
+    const result = await createRide({
+      ...form,
+      date: dateMode === "single" ? form.date : "",
+      recurring: dateMode !== "single",
+      distanceKm: routeInfo?.distanceKm ?? null,
+      durationMinutes: routeInfo?.durationMinutes ?? null,
+      fareLimit: fareLimit ?? null,
+    });
 
     if (!result.success) {
       setSubmitError(result.error || "發布失敗，請再試一次");
@@ -93,7 +177,7 @@ function PostRidePage() {
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-5">
+      <div className="flex-1 px-4 py-5 pb-28">
         {step === 1 && (
           <div className="flex flex-col gap-4">
             <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col gap-4">
@@ -101,7 +185,22 @@ function PostRidePage() {
 
               {/* From */}
               <div>
-                <label className="text-xs text-gray-500 font-medium mb-1 block" htmlFor="post-from">出發地</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-500 font-medium" htmlFor="post-from">出發地</label>
+                  <div className="flex items-center gap-1.5">
+                    <GpsButton onLocate={(v) => { set("from", v); touch("from"); }} />
+                    <button
+                      onClick={() => setMapTarget("from")}
+                      aria-label="用地圖選取出發地"
+                      className="flex items-center gap-1 bg-green-50 text-green-600 border border-green-200 rounded-lg px-2 py-1 text-xs hover:bg-green-100 active:scale-95 transition-all"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      地圖
+                    </button>
+                  </div>
+                </div>
                 <div className={`flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border transition-colors ${touched.from && !form.from ? "border-red-300" : "border-gray-100 focus-within:border-green-400"}`}>
                   <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" aria-hidden="true" />
                   <PlacesAutocomplete
@@ -118,7 +217,19 @@ function PostRidePage() {
 
               {/* To */}
               <div>
-                <label className="text-xs text-gray-500 font-medium mb-1 block" htmlFor="post-to">目的地</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-500 font-medium" htmlFor="post-to">目的地</label>
+                  <button
+                    onClick={() => setMapTarget("to")}
+                    aria-label="用地圖選取目的地"
+                    className="flex items-center gap-1 bg-green-50 text-green-600 border border-green-200 rounded-lg px-2 py-1 text-xs hover:bg-green-100 active:scale-95 transition-all"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    地圖
+                  </button>
+                </div>
                 <div className={`flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border transition-colors ${touched.to && !form.to ? "border-red-300" : "border-gray-100 focus-within:border-green-400"}`}>
                   <svg className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -135,41 +246,65 @@ function PostRidePage() {
                 <span className={fieldErr("to", !form.to)}>⚠ 請填入目的地</span>
               </div>
 
-              {/* Date */}
+              {/* Date mode */}
               <div>
-                <label className="text-xs text-gray-500 font-medium mb-1 block">出發日期</label>
-                <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
+                <label className="text-xs text-gray-500 font-medium mb-2 block">出發日期</label>
+                <div className="flex gap-2 mb-3">
+                  {(["single", "weekdays", "daily"] as DateMode[]).map((mode) => {
+                    const labels: Record<DateMode, string> = { single: "單日", weekdays: "工作日", daily: "每日" };
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => { setDateMode(mode); if (mode !== "single") set("date", ""); }}
+                        className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                          dateMode === mode ? "bg-green-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
+                      >
+                        {labels[mode]}
+                      </button>
+                    );
+                  })}
+                </div>
+                {dateMode === "single" ? (
+                  <>
+                    <div className={`flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border transition-colors ${touched.date && !form.date ? "border-red-300" : "border-gray-100 focus-within:border-green-400"}`}>
+                      <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                      </svg>
+                      <input
+                        type="date"
+                        min={today}
+                        value={form.date}
+                        onChange={(e) => { set("date", e.target.value); touch("date"); }}
+                        onBlur={() => touch("date")}
+                        className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
+                      />
+                    </div>
+                    <span className={fieldErr("date", !form.date)}>⚠ 請選擇出發日期</span>
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-400 bg-gray-50 rounded-xl px-4 py-3">
+                    {dateMode === "weekdays" ? "將在每週一至五自動發布共乘行程" : "將在每天自動發布共乘行程"}
+                  </p>
+                )}
+              </div>
+
+              {/* Time */}
+              <div>
+                <label className="text-xs text-gray-500 font-medium mb-1 block">出發時間</label>
+                <div className={`flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border transition-colors ${touched.time && !form.time ? "border-red-300" : "border-gray-100 focus-within:border-green-400"}`}>
                   <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
                   </svg>
                   <input
-                    type="date"
-                    min={today}
-                    value={form.date}
-                    onChange={(e) => set("date", e.target.value)}
+                    type="time"
+                    value={form.time}
+                    onChange={(e) => { set("time", e.target.value); touch("time"); }}
+                    onBlur={() => touch("time")}
                     className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
                   />
                 </div>
-              </div>
-
-              {/* Time slots */}
-              <div>
-                <label className="text-xs text-gray-500 font-medium mb-2 block">出發時間</label>
-                <div className="flex flex-wrap gap-2">
-                  {timeSlots.map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => set("time", t)}
-                      className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
-                        form.time === t
-                          ? "bg-green-600 text-white shadow-sm"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
+                <span className={fieldErr("time", !form.time)}>⚠ 請輸入出發時間</span>
               </div>
 
               {/* Seats */}
@@ -193,25 +328,31 @@ function PostRidePage() {
               </div>
             </div>
 
-            {/* Recurring toggle */}
-            <div className="bg-white rounded-2xl shadow-sm p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-gray-700">設為固定班表</p>
-                  <p className="text-xs text-gray-400 mt-0.5">每週同一時間重複發布</p>
+            {/* Route info（有座標時顯示） */}
+            {routeInfo && (
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
+                <div className="flex items-center gap-3 text-sm text-blue-700">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  <span>預計 {routeInfo.distanceText}，約 {routeInfo.durationText}</span>
+                  {fareLimit != null && (
+                    <span className="ml-auto font-semibold text-blue-800 flex-shrink-0">
+                      法定上限 NT${fareLimit}
+                    </span>
+                  )}
                 </div>
-                <button
-                  onClick={() => set("recurring", !form.recurring)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${form.recurring ? "bg-green-500" : "bg-gray-200"}`}
-                >
-                  <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.recurring ? "left-5" : "left-0.5"}`} />
-                </button>
+                {fareLimit != null && (
+                  <p className="text-xs text-blue-500 mt-1.5 pl-7">
+                    依 {routeInfo.distanceText} × 車型油耗 ÷ {form.seats} 人計算。服務費由乘客另付。
+                  </p>
+                )}
               </div>
-            </div>
+            )}
 
             <button
               onClick={() => {
-                touch("from"); touch("to"); touch("date"); touch("time");
+                touch("from"); touch("to"); touch("time"); if (dateMode === "single") touch("date");
                 if (step1Valid) setStep(2);
               }}
               className="w-full bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold py-4 rounded-xl shadow disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all"
@@ -247,21 +388,32 @@ function PostRidePage() {
 
               {/* Price */}
               <div>
-                <label className="text-xs text-gray-500 font-medium mb-1 block">每人費用（NT$）</label>
-                <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-500 font-medium">每人油資分攤（NT$）</label>
+                  {fareLimit != null && (
+                    <span className="text-xs text-blue-600 font-medium">法定上限 NT${fareLimit}</span>
+                  )}
+                </div>
+                <div className={`flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border transition-colors ${priceOverLimit ? "border-red-400" : "border-gray-100 focus-within:border-green-400"}`}>
                   <span className="text-gray-400 text-sm font-medium">NT$</span>
                   <input
                     type="number"
-                    placeholder="建議 50–150"
+                    placeholder={fareLimit != null ? `上限 ${fareLimit}` : "建議 50–150"}
                     value={form.price}
                     onChange={(e) => set("price", e.target.value)}
                     className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
                   />
                 </div>
+                {priceOverLimit && (
+                  <p className="text-red-500 text-xs mt-1">⚠ 超過法定油資上限（NT${fareLimit}），請調低票價</p>
+                )}
                 <div className="flex gap-2 mt-2">
-                  {["50", "80", "100", "120"].map((p) => (
+                  {(fareLimit != null
+                    ? [Math.floor(fareLimit * 0.6), Math.floor(fareLimit * 0.75), Math.floor(fareLimit * 0.9), fareLimit].map(String)
+                    : ["50", "80", "100", "120"]
+                  ).map((p, i) => (
                     <button
-                      key={p}
+                      key={i}
                       onClick={() => set("price", p)}
                       className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
                         form.price === p ? "bg-green-100 text-green-700 border border-green-300" : "bg-gray-100 text-gray-500"
@@ -271,6 +423,7 @@ function PostRidePage() {
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-gray-400 mt-1.5">服務費 NT$10–20（依距離分級）由乘客另付，司機不扣除</p>
               </div>
 
               {/* Meeting point */}
@@ -354,6 +507,24 @@ function PostRidePage() {
           </div>
         )}
       </div>
+
+      {/* Map Picker Modal */}
+      {mapTarget && (
+        <MapPickerModal
+          onClose={() => setMapTarget(null)}
+          onConfirm={(addr, lat, lng) => {
+            if (mapTarget === "from") {
+              set("from", addr);
+              setForm((prev) => ({ ...prev, from: addr, originLat: lat, originLng: lng }));
+              touch("from");
+            } else {
+              setForm((prev) => ({ ...prev, to: addr, destinationLat: lat, destinationLng: lng }));
+              touch("to");
+            }
+            setMapTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }

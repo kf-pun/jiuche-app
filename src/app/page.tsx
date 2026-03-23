@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import PlacesAutocomplete from "@/components/PlacesAutocomplete";
 import GpsButton from "@/components/GpsButton";
@@ -41,6 +41,7 @@ export default function Home() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [date, setDate] = useState("");
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [mapTarget, setMapTarget] = useState<"from" | "to" | null>(null);
@@ -173,7 +174,10 @@ export default function Home() {
           {/* Date */}
           <div className="mb-5">
             <label className="text-xs font-medium text-gray-500 mb-1 block">出發日期</label>
-            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
+            <div
+              className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors cursor-pointer"
+              onClick={() => dateInputRef.current?.showPicker?.()}
+            >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                 <line x1="16" y1="2" x2="16" y2="6" />
@@ -181,11 +185,12 @@ export default function Home() {
                 <line x1="3" y1="10" x2="21" y2="10" />
               </svg>
               <input
+                ref={dateInputRef}
                 type="date"
                 value={date}
                 min={today}
                 onChange={(e) => setDate(e.target.value)}
-                className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
+                className="flex-1 bg-transparent text-sm text-gray-700 outline-none cursor-pointer"
               />
             </div>
           </div>

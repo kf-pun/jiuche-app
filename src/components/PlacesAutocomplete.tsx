@@ -74,7 +74,7 @@ export default function PlacesAutocomplete({
   }, []);
 
   function selectSuggestion(s: Suggestion) {
-    onChange(s.mainText || s.description);
+    onChange(s.description);
     setOpen(false);
     setSuggestions([]);
     setActiveIndex(-1);
@@ -97,7 +97,7 @@ export default function PlacesAutocomplete({
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative flex-1 min-w-0">
       <div className="relative">
         <input
           id={id}

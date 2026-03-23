@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PlacesAutocomplete from "@/components/PlacesAutocomplete";
+import GpsButton from "@/components/GpsButton";
+import dynamic from "next/dynamic";
+const MapPickerModal = dynamic(() => import("@/components/MapPickerModal"), { ssr: false });
 
 const SEARCH_HISTORY_KEY = "jiuche_search_guest";
 
@@ -40,6 +43,7 @@ export default function Home() {
   const [date, setDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [mapTarget, setMapTarget] = useState<"from" | "to" | null>(null);
 
   useEffect(() => {
     setSearchHistory(loadSearchHistory());
@@ -62,7 +66,7 @@ export default function Home() {
       <div className="bg-gradient-to-br from-green-600 to-emerald-500 px-6 pt-14 pb-10">
         <div className="flex items-center gap-3 mb-1">
           <div className="bg-white/20 rounded-xl p-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c-4.97 4.97-4.97 13.03 0 18 4.97-4.97 4.97-13.03 0-18z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c4.97 4.97 4.97 13.03 0 18" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h18" />
@@ -85,7 +89,22 @@ export default function Home() {
 
           {/* From */}
           <div className="mb-3">
-            <label className="text-xs font-medium text-gray-500 mb-1 block" htmlFor="home-from">出發地</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-gray-500" htmlFor="home-from">出發地</label>
+              <div className="flex items-center gap-1.5">
+                <GpsButton onLocate={setFrom} />
+                <button
+                  onClick={() => setMapTarget("from")}
+                  aria-label="用地圖選取出發地"
+                  className="flex items-center gap-1 bg-green-50 text-green-600 border border-green-200 rounded-lg px-2 py-1 text-xs hover:bg-green-100 active:scale-95 transition-all"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  地圖
+                </button>
+              </div>
+            </div>
             <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                 <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" />
@@ -97,25 +116,42 @@ export default function Home() {
                 onChange={setFrom}
                 placeholder="輸入出發地點"
                 aria-label="出發地"
-                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none w-full"
+                className="w-full bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
               />
             </div>
           </div>
 
-          {/* Arrow divider */}
+          {/* Swap button */}
           <div className="flex items-center justify-center my-1 mb-3">
             <div className="flex-1 border-t border-dashed border-gray-200" />
-            <div className="mx-3 bg-green-50 rounded-full p-1.5">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            <button
+              onClick={() => { const tmp = from; setFrom(to); setTo(tmp); }}
+              aria-label="互換出發地與目的地"
+              title="互換起迄"
+              className="mx-3 bg-green-50 rounded-full p-1.5 hover:bg-green-100 active:scale-90 transition-all"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
               </svg>
-            </div>
+            </button>
             <div className="flex-1 border-t border-dashed border-gray-200" />
           </div>
 
           {/* To */}
           <div className="mb-3">
-            <label className="text-xs font-medium text-gray-500 mb-1 block" htmlFor="home-to">目的地</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-gray-500" htmlFor="home-to">目的地</label>
+              <button
+                onClick={() => setMapTarget("to")}
+                aria-label="用地圖選取目的地"
+                className="flex items-center gap-1 bg-green-50 text-green-600 border border-green-200 rounded-lg px-2 py-1 text-xs hover:bg-green-100 active:scale-95 transition-all"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                地圖
+              </button>
+            </div>
             <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 0 1-2.827 0l-4.244-4.243a8 8 0 1 1 11.314 0z" />
@@ -127,7 +163,7 @@ export default function Home() {
                 onChange={setTo}
                 placeholder="輸入目的地點"
                 aria-label="目的地"
-                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none w-full"
+                className="w-full bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
               />
             </div>
           </div>
@@ -136,7 +172,7 @@ export default function Home() {
           <div className="mb-5">
             <label className="text-xs font-medium text-gray-500 mb-1 block">出發日期</label>
             <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 focus-within:border-green-400 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                 <line x1="16" y1="2" x2="16" y2="6" />
                 <line x1="8" y1="2" x2="8" y2="6" />
@@ -156,7 +192,7 @@ export default function Home() {
           <button
             onClick={handleSearch}
             disabled={!from || !to || !date || loading}
-            className="w-full bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold py-4 rounded-xl shadow-md hover:from-green-700 hover:to-emerald-600 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold py-4 rounded-xl shadow-md hover:from-green-700 hover:to-emerald-600 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -168,7 +204,7 @@ export default function Home() {
               </>
             ) : (
               <>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
                 </svg>
                 尋找順路車
@@ -219,7 +255,7 @@ export default function Home() {
               className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 hover:border-green-300 active:scale-98 transition-all text-left"
             >
               <div className="bg-green-50 rounded-lg p-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
@@ -227,7 +263,7 @@ export default function Home() {
                 <p className="text-sm text-gray-700 font-medium truncate">{route.from} → {route.to}</p>
                 <p className="text-xs text-green-500 mt-0.5">可減碳 {route.co2} CO₂</p>
               </div>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </button>
@@ -239,7 +275,7 @@ export default function Home() {
       <div className="px-4 mb-6">
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-4 flex items-center gap-4">
           <div className="bg-white/20 rounded-xl p-3">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 0 1 2 2v1a2 2 0 0 0 2 2 2 2 0 0 1 2 2v2.945" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 3.935V5.5A2.5 2.5 0 0 0 10.5 8h.5a2 2 0 0 1 2 2 2 2 0 0 0 4 0 2 2 0 0 1 2-2h1.064" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
@@ -252,6 +288,18 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Map Picker Modal */}
+      {mapTarget && (
+        <MapPickerModal
+          onClose={() => setMapTarget(null)}
+          onConfirm={(addr) => {
+            if (mapTarget === "from") setFrom(addr);
+            else setTo(addr);
+            setMapTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }

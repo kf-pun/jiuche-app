@@ -17,6 +17,7 @@ export interface TripBookingItem {
   co2Saved: number;
   driverName: string;
   driverAvatar: string | null;
+  driverPhone: string | null;
   hasReview: boolean;
 }
 
@@ -33,6 +34,7 @@ export interface TripRideItem {
 
 export interface BookingDetailForReview {
   bookingId: string;
+  status: string;
   from: string;
   to: string;
   departureTime: string;
@@ -54,7 +56,7 @@ export async function getUserBookings(): Promise<TripBookingItem[]> {
       id, ride_id, seats, total_price, status,
       ride:rides (
         from_location, to_location, departure_time, co2_saved,
-        driver:users ( name, avatar_url )
+        driver:users ( name, avatar_url, phone )
       ),
       reviews ( id )
     `)
@@ -79,7 +81,9 @@ export async function getUserBookings(): Promise<TripBookingItem[]> {
     co2Saved: parseFloat((b.seats * 0.6).toFixed(1)),
     driverName: b.ride?.driver?.name ?? "司機",
     driverAvatar: b.ride?.driver?.avatar_url ?? null,
-    hasReview: Array.isArray(b.reviews) && b.reviews.length > 0,
+    driverPhone: b.ride?.driver?.phone ?? null,
+    // PostgREST returns reviews as object (not array) due to unique constraint on booking_id
+    hasReview: b.reviews !== null && b.reviews !== undefined && (Array.isArray(b.reviews) ? b.reviews.length > 0 : true),
   }));
 }
 
@@ -126,7 +130,7 @@ export async function getBookingDetail(bookingId: string): Promise<BookingDetail
   const { data, error } = await service
     .from("bookings")
     .select(`
-      id,
+      id, status,
       ride:rides (
         from_location, to_location, departure_time,
         driver:users ( name, avatar_url )
@@ -142,6 +146,7 @@ export async function getBookingDetail(bookingId: string): Promise<BookingDetail
   const d = data as any;
   return {
     bookingId: d.id,
+    status: d.status ?? "",
     from: d.ride?.from_location ?? "",
     to: d.ride?.to_location ?? "",
     departureTime: d.ride?.departure_time ?? "",
@@ -158,7 +163,8 @@ export interface CreateBookingResult {
 
 export async function createBooking(
   rideId: string,
-  seats: number
+  seats: number,
+  serviceFee: number = 0
 ): Promise<CreateBookingResult> {
   const supabase = await createClient();
   const service = await createServiceClient();
@@ -187,7 +193,7 @@ export async function createBooking(
     .eq("id", user.id)
     .single();
 
-  const totalPrice = ride.price * seats;
+  const totalPrice = ride.price * seats + serviceFee;
   if (!userRow || userRow.balance < totalPrice) {
     return { success: false, error: "餘額不足，請先儲值" };
   }
@@ -198,6 +204,7 @@ export async function createBooking(
     passenger_id: user.id,
     seats,
     total_price: totalPrice,
+    service_fee: serviceFee,
     status: "confirmed",
   };
 
@@ -235,4 +242,47 @@ export async function createBooking(
     .eq("id", user.id);
 
   return { success: true, bookingId: bookingData.id };
+}
+
+export async function cancelBooking(bookingId: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const service = await createServiceClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "未登入" };
+
+  // 取得訂單（確認是本人且狀態為 confirmed）
+  const { data: booking, error: bErr } = await service
+    .from("bookings")
+    .select("id, ride_id, passenger_id, seats, total_price, status")
+    .eq("id", bookingId)
+    .single();
+
+  if (bErr || !booking) return { success: false, error: "找不到訂單" };
+  if (booking.passenger_id !== user.id) return { success: false, error: "無權限取消此訂單" };
+  if (booking.status !== "confirmed") return { success: false, error: "此訂單無法取消" };
+
+  // 1. 訂單狀態改為 cancelled
+  await service.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
+
+  // 2. 還原座位
+  const { data: ride } = await service.from("rides").select("available_seats").eq("id", booking.ride_id).single();
+  if (ride) {
+    await service.from("rides").update({ available_seats: ride.available_seats + booking.seats }).eq("id", booking.ride_id);
+  }
+
+  // 3. 退款給乘客
+  const { data: userRow } = await service.from("users").select("balance").eq("id", user.id).single();
+  if (userRow) {
+    await service.from("users").update({ balance: userRow.balance + booking.total_price }).eq("id", user.id);
+    await service.from("wallet_transactions").insert({
+      user_id: user.id,
+      type: "refund" as const,
+      amount: booking.total_price,
+      description: "取消行程退款",
+      reference_id: bookingId,
+    });
+  }
+
+  return { success: true };
 }

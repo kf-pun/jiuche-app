@@ -11,6 +11,7 @@ export interface UserRow {
   company: string
   is_driver: boolean
   vehicle_type: string | null
+  car_model: string | null
   vehicle_plate: string | null
   vehicle_color: string | null
   avatar_url: string | null
@@ -38,6 +39,14 @@ export interface RideRow {
   meeting_point: string | null
   notes: string | null
   status: 'active' | 'cancelled' | 'completed'
+  // Sprint 10 — 地圖欄位
+  origin_lat: number | null
+  origin_lng: number | null
+  destination_lat: number | null
+  destination_lng: number | null
+  distance_km: number | null
+  duration_minutes: number | null
+  fare_limit: number | null
   created_at: string
 }
 
@@ -48,6 +57,7 @@ export interface BookingRow {
   seats: number
   total_price: number
   status: 'confirmed' | 'cancelled' | 'completed'
+  service_fee: number  // Sprint 10 — 平台服務費
   created_at: string
 }
 
@@ -74,6 +84,22 @@ export interface WalletTransactionRow {
   created_at: string
 }
 
+// Sprint 10 — 新增表
+
+export interface CompanyRow {
+  id: string
+  name: string
+  subscription_active: boolean
+  subscription_expires_at: string | null
+  created_at: string
+}
+
+export interface SystemConfigRow {
+  key: string
+  value: string
+  updated_at: string
+}
+
 export interface NotificationRow {
   id: string
   user_id: string
@@ -88,8 +114,22 @@ export interface NotificationRow {
 // --- Insert types (寫入時，id 和 created_at 選填) ---
 
 export type UserInsert = Omit<UserRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-export type RideInsert = Omit<RideRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-export type BookingInsert = Omit<BookingRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+export type RideInsert = Omit<RideRow, 'id' | 'created_at' | 'origin_lat' | 'origin_lng' | 'destination_lat' | 'destination_lng' | 'distance_km' | 'duration_minutes' | 'fare_limit'> & {
+  id?: string
+  created_at?: string
+  origin_lat?: number | null
+  origin_lng?: number | null
+  destination_lat?: number | null
+  destination_lng?: number | null
+  distance_km?: number | null
+  duration_minutes?: number | null
+  fare_limit?: number | null
+}
+export type BookingInsert = Omit<BookingRow, 'id' | 'created_at' | 'service_fee'> & {
+  id?: string
+  created_at?: string
+  service_fee?: number  // 預設 0，正式服務費由應用層計算後帶入
+}
 export type ReviewInsert = Omit<ReviewRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
 export type WalletTransactionInsert = Omit<WalletTransactionRow, 'id' | 'created_at' | 'status' | 'ecpay_trade_no'> & {
   id?: string
@@ -98,6 +138,8 @@ export type WalletTransactionInsert = Omit<WalletTransactionRow, 'id' | 'created
   ecpay_trade_no?: string | null
 }
 export type NotificationInsert = Omit<NotificationRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+export type CompanyInsert = Omit<CompanyRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+export type SystemConfigInsert = SystemConfigRow
 
 // --- Update types (所有欄位皆選填) ---
 
@@ -107,6 +149,8 @@ export type BookingUpdate = Partial<BookingInsert>
 export type ReviewUpdate = Partial<ReviewInsert>
 export type WalletTransactionUpdate = Partial<WalletTransactionInsert>
 export type NotificationUpdate = Partial<NotificationInsert>
+export type CompanyUpdate = Partial<CompanyInsert>
+export type SystemConfigUpdate = Partial<SystemConfigInsert>
 
 // --- Database 型別（給 Supabase createClient 用）---
 
@@ -147,6 +191,18 @@ export type Database = {
         Row: NotificationRow
         Insert: NotificationInsert
         Update: NotificationUpdate
+        Relationships: []
+      }
+      companies: {
+        Row: CompanyRow
+        Insert: CompanyInsert
+        Update: CompanyUpdate
+        Relationships: []
+      }
+      system_config: {
+        Row: SystemConfigRow
+        Insert: SystemConfigInsert
+        Update: SystemConfigUpdate
         Relationships: []
       }
     }

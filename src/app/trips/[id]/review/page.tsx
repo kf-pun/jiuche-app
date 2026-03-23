@@ -1,8 +1,9 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import AuthGuard from "@/components/AuthGuard";
 import { getBookingDetail } from "@/actions/bookings";
 import type { BookingDetailForReview } from "@/actions/bookings";
 import { createReview } from "@/actions/reviews";
@@ -43,9 +44,8 @@ function StarRow({ rating, setRating }: { rating: number; setRating: (n: number)
 const ratingLabel = ["", "很差", "不太好", "普通", "不錯", "非常棒！"];
 const ratingColor  = ["", "text-red-400", "text-orange-400", "text-yellow-500", "text-green-500", "text-green-600"];
 
-export default function ReviewPage() {
+function ReviewContent() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
 
   const [trip, setTrip] = useState<BookingDetailForReview | null | undefined>(undefined); // undefined=loading
   const [rating, setRating] = useState(0);
@@ -97,6 +97,16 @@ export default function ReviewPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-20 px-6 text-center">
         <p className="text-gray-400 font-medium">找不到行程</p>
+        <Link href="/trips" className="mt-4 text-green-600 text-sm">返回我的行程</Link>
+      </div>
+    );
+  }
+
+  // 行程未完成，不可評價
+  if (trip.status !== "completed") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full py-20 px-6 text-center">
+        <p className="text-gray-400 font-medium">行程尚未完成，無法評價</p>
         <Link href="/trips" className="mt-4 text-green-600 text-sm">返回我的行程</Link>
       </div>
     );
@@ -245,5 +255,13 @@ export default function ReviewPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function ReviewPage() {
+  return (
+    <AuthGuard>
+      <ReviewContent />
+    </AuthGuard>
   );
 }

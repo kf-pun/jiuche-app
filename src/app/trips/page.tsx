@@ -4,15 +4,22 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
-import { getUserBookings, getUserRides } from "@/actions/bookings";
+import { getUserBookings, getUserRides, cancelBooking } from "@/actions/bookings";
 import type { TripBookingItem, TripRideItem } from "@/actions/bookings";
+import { cancelRide } from "@/actions/rides";
 
 type TripStatus = "confirmed" | "pending" | "completed" | "cancelled";
+
+/** 去除 geocode 回傳的郵遞區號與國家前綴，例：「100台灣臺北市中正區...」→「臺北市中正區...」 */
+function cleanAddress(addr: string): string {
+  return addr.replace(/^\d{3,5}台灣/, "").trim();
+}
 
 interface Trip {
   id: string;          // bookingId（乘客）或 rideId（司機）
   type: "passenger" | "driver";
   driverName?: string;
+  driverPhone?: string | null;
   bookedSeats?: number;
   from: string;
   to: string;
@@ -31,6 +38,7 @@ function bookingToTrip(b: TripBookingItem): Trip {
     id: b.bookingId,
     type: "passenger",
     driverName: b.driverName,
+    driverPhone: b.driverPhone,
     from: b.from,
     to: b.to,
     date: dt.toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }),
@@ -73,9 +81,25 @@ const statusConfig: Record<TripStatus, { label: string; color: string; bg: strin
   cancelled: { label: "已取消", color: "text-red-400",   bg: "bg-red-50"   },
 };
 
-function TripCard({ trip }: { trip: Trip }) {
+function TripCard({ trip, onCancelled }: { trip: Trip; onCancelled?: () => void }) {
   const router = useRouter();
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const status = statusConfig[trip.status];
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    const result = trip.type === "driver"
+      ? await cancelRide(trip.id)
+      : await cancelBooking(trip.id);
+    setCancelling(false);
+    setConfirmCancel(false);
+    if (result.success) {
+      onCancelled?.();
+    } else {
+      alert(result.error || "取消失敗，請再試一次");
+    }
+  };
   const dateObj = new Date(trip.date + "T00:00:00");
   const dateStr = dateObj.toLocaleDateString("zh-TW", { month: "short", day: "numeric", weekday: "short" });
 
@@ -105,10 +129,10 @@ function TripCard({ trip }: { trip: Trip }) {
         </div>
         <div className="flex-1 flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-800">{trip.from}</p>
+            <p className="text-sm font-medium text-gray-800">{cleanAddress(trip.from)}</p>
             <span className="text-green-700 font-bold text-sm">{trip.time}</span>
           </div>
-          <p className="text-sm text-gray-500">{trip.to}</p>
+          <p className="text-sm text-gray-500">{cleanAddress(trip.to)}</p>
         </div>
       </div>
 
@@ -130,21 +154,74 @@ function TripCard({ trip }: { trip: Trip }) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-green-600 font-medium">
-            -{trip.co2Saved.toFixed(1)} kg CO₂
+            省下 {trip.co2Saved.toFixed(1)} kg CO₂
           </span>
           <span className="text-sm font-bold text-gray-700">NT${trip.price}</span>
         </div>
       </div>
 
-      {/* Action buttons */}
-      {trip.status === "confirmed" && trip.type === "passenger" && (
-        <div className="mt-3 flex gap-2">
-          <button className="flex-1 py-2 rounded-xl bg-gray-50 text-gray-500 text-xs font-medium hover:bg-gray-100 transition-colors border border-gray-100">
-            聯絡司機
-          </button>
-          <button className="flex-1 py-2 rounded-xl bg-red-50 text-red-400 text-xs font-medium hover:bg-red-100 transition-colors border border-red-100">
+      {/* Action buttons — 司機 */}
+      {trip.status === "confirmed" && trip.type === "driver" && (
+        <div className="mt-3">
+          <button
+            onClick={() => setConfirmCancel(true)}
+            className="w-full py-2 rounded-xl bg-red-50 text-red-400 text-xs font-medium hover:bg-red-100 transition-colors border border-red-100"
+          >
             取消行程
           </button>
+        </div>
+      )}
+
+      {/* Action buttons — 乘客 */}
+      {trip.status === "confirmed" && trip.type === "passenger" && (
+        <div className="mt-3 flex gap-2">
+          {trip.driverPhone ? (
+            <a
+              href={`tel:${trip.driverPhone}`}
+              className="flex-1 py-2 rounded-xl bg-gray-50 text-gray-500 text-xs font-medium hover:bg-gray-100 transition-colors border border-gray-100 text-center"
+            >
+              聯絡司機
+            </a>
+          ) : (
+            <button disabled className="flex-1 py-2 rounded-xl bg-gray-50 text-gray-300 text-xs font-medium border border-gray-100 cursor-not-allowed">
+              聯絡司機
+            </button>
+          )}
+          <button
+            onClick={() => setConfirmCancel(true)}
+            className="flex-1 py-2 rounded-xl bg-red-50 text-red-400 text-xs font-medium hover:bg-red-100 transition-colors border border-red-100"
+          >
+            取消行程
+          </button>
+        </div>
+      )}
+
+      {/* 取消確認 dialog */}
+      {confirmCancel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-base font-semibold text-gray-800 mb-2">確認取消行程？</h3>
+            <p className="text-sm text-gray-500 mb-5">
+              {trip.type === "driver"
+                ? "取消後，所有已預訂的乘客將自動退款。此操作無法復原。"
+                : `取消後將全額退款 NT$${trip.price} 至錢包。`}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmCancel(false)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50"
+              >
+                返回
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-50"
+              >
+                {cancelling ? "取消中…" : "確認取消"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {trip.status === "completed" && trip.type === "passenger" && (
@@ -178,21 +255,20 @@ function TripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const [bookings, rides] = await Promise.all([getUserBookings(), getUserRides()]);
-      const all = [
-        ...bookings.map(bookingToTrip),
-        ...rides.map(rideToTrip),
-      ];
-      // 依出發時間排序（最近優先）
-      all.sort((a, b) => (a.date + a.time) > (b.date + b.time) ? -1 : 1);
-      setTrips(all);
-      setLoading(false);
-    }
-    load();
-  }, []);
+  async function load() {
+    setLoading(true);
+    const [bookings, rides] = await Promise.all([getUserBookings(), getUserRides()]);
+    const all = [
+      ...bookings.map(bookingToTrip),
+      ...rides.map(rideToTrip),
+    ];
+    // 依出發時間排序（最近優先）
+    all.sort((a, b) => (a.date + a.time) > (b.date + b.time) ? -1 : 1);
+    setTrips(all);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
 
   const upcoming = trips.filter((t) => t.status === "confirmed" || t.status === "pending");
   const history  = trips.filter((t) => t.status === "completed" || t.status === "cancelled");
@@ -267,7 +343,7 @@ function TripsPage() {
               <Link href="/" className="mt-3 text-green-600 text-sm font-medium">立即搜尋共乘</Link>
             </div>
           ) : (
-            upcoming.map((t) => <TripCard key={t.id} trip={t} />)
+            upcoming.map((t) => <TripCard key={t.id} trip={t} onCancelled={load} />)
           )
         ) : (
           history.length === 0 ? (

@@ -4,6 +4,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { getRideDetail, type RideDetail } from "@/actions/rides";
 import { createBooking } from "@/actions/bookings";
+import { getFareConfig, isEnterprisePassenger } from "@/actions/systemConfig";
+import { calcServiceFee } from "@/lib/fareUtils";
 import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 
@@ -14,6 +16,8 @@ function ConfirmContent() {
   const [loading, setLoading] = useState(false);
   const [ride, setRide] = useState<RideDetail | null | undefined>(undefined);
   const [error, setError] = useState("");
+  const [serviceFee, setServiceFee] = useState(15); // 預設中段
+  const [isEnterprise, setIsEnterprise] = useState(false);
 
   const rideId = searchParams.get("rideId") || "";
   const seats  = parseInt(searchParams.get("seats") || "1");
@@ -21,6 +25,22 @@ function ConfirmContent() {
   useEffect(() => {
     getRideDetail(rideId).then(setRide);
   }, [rideId]);
+
+  // 計算服務費與企業判斷
+  useEffect(() => {
+    if (!ride || !user) return;
+    Promise.all([
+      getFareConfig(),
+      isEnterprisePassenger(user.id),
+    ]).then(([config, enterprise]) => {
+      setIsEnterprise(enterprise);
+      if (enterprise) {
+        setServiceFee(0);
+      } else {
+        setServiceFee(calcServiceFee(ride.distanceKm, config.tier1, config.tier2, config.tier3));
+      }
+    });
+  }, [ride, user]);
 
   if (ride === undefined) {
     return (
@@ -42,15 +62,16 @@ function ConfirmContent() {
     );
   }
 
-  const total     = ride.price * seats;
-  const hasEnough = (user?.balance ?? 0) >= total;
+  const farePerSeat = ride.price;
+  const total       = farePerSeat * seats + serviceFee;
+  const hasEnough   = (user?.balance ?? 0) >= total;
 
   const handlePay = async () => {
     if (!hasEnough || !isLoggedIn) return;
     setLoading(true);
     setError("");
 
-    const result = await createBooking(rideId, seats);
+    const result = await createBooking(rideId, seats, serviceFee);
 
     if (!result.success) {
       setError(result.error ?? "預訂失敗，請稍後再試");
@@ -129,16 +150,24 @@ function ConfirmContent() {
           <h3 className="text-sm font-semibold text-gray-700 mb-3">費用明細</h3>
           <div className="flex flex-col gap-2.5">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">每人費用</span>
-              <span className="text-gray-700">NT$ {ride.price}</span>
+              <span className="text-gray-500">油資分攤</span>
+              <span className="text-gray-700">NT$ {farePerSeat} × {seats} 人</span>
             </div>
+            {seats > 1 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">小計</span>
+                <span className="text-gray-700">NT$ {farePerSeat * seats}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">乘客人數</span>
-              <span className="text-gray-700">{seats} 人</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">服務費</span>
-              <span className="text-green-600">NT$ 0（免費）</span>
+              <span className="text-gray-500">平台服務費</span>
+              {isEnterprise ? (
+                <span className="text-green-600">NT$ 0 <span className="text-xs text-green-500">（企業方案）</span></span>
+              ) : serviceFee === 0 ? (
+                <span className="text-green-600">NT$ 0（免費）</span>
+              ) : (
+                <span className="text-gray-700">NT$ {serviceFee}</span>
+              )}
             </div>
             <div className="border-t border-dashed border-gray-100 pt-2.5 flex justify-between">
               <span className="text-base font-bold text-gray-800">總計</span>
@@ -148,28 +177,50 @@ function ConfirmContent() {
         </div>
 
         {/* 付款方式（錢包） */}
-        <div className={`rounded-2xl shadow-sm p-4 border-2 transition-colors ${hasEnough ? "bg-white border-green-100" : "bg-red-50 border-red-200"}`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${hasEnough ? "bg-green-50" : "bg-red-100"}`}>
-              <svg className={`w-5 h-5 ${hasEnough ? "text-green-500" : "text-red-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-              </svg>
+        {!isLoggedIn ? (
+          <div className="rounded-2xl shadow-sm p-4 border-2 bg-gray-50 border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100">
+                <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-700">揪車錢包付款</p>
+                <p className="text-xs mt-0.5 text-gray-400">請先登入以使用錢包付款</p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-700">揪車錢包付款</p>
-              <p className={`text-xs mt-0.5 ${hasEnough ? "text-gray-400" : "text-red-500 font-medium"}`}>
-                {hasEnough
-                  ? `目前餘額 NT$ ${user?.balance.toLocaleString()}，付款後剩 NT$ ${((user?.balance ?? 0) - total).toLocaleString()}`
-                  : `餘額不足（NT$ ${user?.balance.toLocaleString()}），請先儲值`}
-              </p>
-            </div>
-          </div>
-          {!hasEnough && (
-            <Link href="/wallet/topup" className="mt-3 w-full block text-center bg-red-500 text-white text-sm font-semibold py-2.5 rounded-xl active:scale-95 transition-all">
-              立即儲值
+            <Link
+              href={`/auth/login?redirect=${encodeURIComponent(`/booking/confirm?rideId=${rideId}&seats=${seats}`)}`}
+              className="mt-3 w-full block text-center bg-green-600 text-white text-sm font-semibold py-2.5 rounded-xl active:scale-95 transition-all"
+            >
+              前往登入
             </Link>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className={`rounded-2xl shadow-sm p-4 border-2 transition-colors ${hasEnough ? "bg-white border-green-100" : "bg-red-50 border-red-200"}`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${hasEnough ? "bg-green-50" : "bg-red-100"}`}>
+                <svg className={`w-5 h-5 ${hasEnough ? "text-green-500" : "text-red-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-700">揪車錢包付款</p>
+                <p className={`text-xs mt-0.5 ${hasEnough ? "text-gray-400" : "text-red-500 font-medium"}`}>
+                  {hasEnough
+                    ? `目前餘額 NT$ ${(user?.balance ?? 0).toLocaleString()}，付款後剩 NT$ ${((user?.balance ?? 0) - total).toLocaleString()}`
+                    : `餘額不足（NT$ ${(user?.balance ?? 0).toLocaleString()}），請先儲值`}
+                </p>
+              </div>
+            </div>
+            {!hasEnough && (
+              <Link href="/wallet/topup" className="mt-3 w-full block text-center bg-red-500 text-white text-sm font-semibold py-2.5 rounded-xl active:scale-95 transition-all">
+                立即儲值
+              </Link>
+            )}
+          </div>
+        )}
 
         {/* ESG */}
         <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3.5 flex items-center gap-3">

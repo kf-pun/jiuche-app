@@ -25,8 +25,9 @@ export default function BottomNav() {
       <div className="flex items-center h-16">
 
         {/* 搜尋 */}
-        <Link href="/" aria-label="搜尋" className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${isActive("/") ? "text-green-600" : "text-gray-400 hover:text-green-500"}`}>
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+        <Link href="/" aria-label="搜尋" className={`relative flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${isActive("/") ? "text-green-600" : "text-gray-400 hover:text-green-500"}`}>
+          {isActive("/") && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-green-600 rounded-full" />}
+          <svg className="w-6 h-6" fill={isActive("/") ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/") ? 0 : 2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
           </svg>
           <span className="text-xs font-medium">搜尋</span>

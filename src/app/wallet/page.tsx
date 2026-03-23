@@ -157,7 +157,7 @@ function WalletPage() {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className={`text-sm font-bold ${cfg.amountClass}`}>
-                      {tx.amount > 0 ? "+" : ""}NT$ {Math.abs(tx.amount).toLocaleString()}
+                      {tx.amount > 0 ? "+" : tx.amount < 0 ? "-" : ""}NT$ {Math.abs(tx.amount).toLocaleString()}
                     </p>
                     <p className="text-xs text-gray-400">{formatDate(tx.createdAt)}</p>
                   </div>

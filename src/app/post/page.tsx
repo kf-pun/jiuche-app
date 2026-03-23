@@ -98,7 +98,7 @@ function PostRidePage() {
         const config = await getFareConfig();
         const limit = calcFareLimit(
           distanceKm,
-          (user?.carModel as VehicleType | null) ?? null,
+          (user?.vehicleType as VehicleType | null) || null,
           config.fuelPrice95,
           config.fuelPrice98,
           seats
@@ -117,29 +117,61 @@ function PostRidePage() {
   const step1Valid = form.from && form.to && form.time && (dateMode !== "single" || form.date);
   const step2Valid = form.price && form.meetingPoint && !priceOverLimit;
 
+  // 計算工作日/每日模式的下一個有效出發日期（台灣時間）
+  function calcNextDate(mode: DateMode, time: string): string {
+    const now = new Date();
+    // 轉台灣時間（UTC+8）
+    const tw = new Date(now.getTime() + (8 * 60 + now.getTimezoneOffset()) * 60000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const toStr = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const twTime = `${pad(tw.getHours())}:${pad(tw.getMinutes())}`;
+    const timePassed = time <= twTime; // 今天該時間已過
+
+    if (mode === "daily") {
+      if (!timePassed) return toStr(tw);
+      const tomorrow = new Date(tw);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return toStr(tomorrow);
+    }
+    // weekdays
+    const isWeekday = tw.getDay() >= 1 && tw.getDay() <= 5;
+    if (isWeekday && !timePassed) return toStr(tw);
+    const next = new Date(tw);
+    next.setDate(next.getDate() + 1);
+    while (next.getDay() === 0 || next.getDay() === 6) next.setDate(next.getDate() + 1);
+    return toStr(next);
+  }
+
   const handleSubmit = async () => {
     if (!step2Valid) return;
     setLoading(true);
     setSubmitError("");
 
-    const result = await createRide({
-      ...form,
-      date: dateMode === "single" ? form.date : "",
-      recurring: dateMode !== "single",
-      distanceKm: routeInfo?.distanceKm ?? null,
-      durationMinutes: routeInfo?.durationMinutes ?? null,
-      fareLimit: fareLimit ?? null,
-    });
+    try {
+      const result = await createRide({
+        ...form,
+        date: dateMode === "single" ? form.date : calcNextDate(dateMode, form.time),
+        recurring: dateMode !== "single",
+        distanceKm: routeInfo?.distanceKm ?? null,
+        durationMinutes: routeInfo?.durationMinutes ?? null,
+        fareLimit: fareLimit ?? null,
+      });
 
-    if (!result.success) {
-      setSubmitError(result.error || "發布失敗，請再試一次");
+      if (!result.success) {
+        setSubmitError(result.error || "發布失敗，請再試一次");
+        setLoading(false);
+        return;
+      }
+
+      router.push(
+        `/post/success?from=${encodeURIComponent(form.from)}&to=${encodeURIComponent(form.to)}&time=${form.time}&seats=${form.seats}&price=${form.price}`
+      );
+    } catch (err) {
+      console.error("handleSubmit error:", err);
+      setSubmitError("發布失敗，請再試一次");
       setLoading(false);
-      return;
     }
-
-    router.push(
-      `/post/success?from=${encodeURIComponent(form.from)}&to=${encodeURIComponent(form.to)}&time=${form.time}&seats=${form.seats}&price=${form.price}`
-    );
   };
 
   return (
@@ -188,7 +220,7 @@ function PostRidePage() {
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs text-gray-500 font-medium" htmlFor="post-from">出發地</label>
                   <div className="flex items-center gap-1.5">
-                    <GpsButton onLocate={(v) => { set("from", v); touch("from"); }} />
+                    <GpsButton onLocate={(v, lat, lng) => { setForm((prev) => ({ ...prev, from: v, originLat: lat, originLng: lng })); touch("from"); }} />
                     <button
                       onClick={() => setMapTarget("from")}
                       aria-label="用地圖選取出發地"
@@ -296,13 +328,40 @@ function PostRidePage() {
                   <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
                   </svg>
-                  <input
-                    type="time"
-                    value={form.time}
-                    onChange={(e) => { set("time", e.target.value); touch("time"); }}
+                  {/* 用兩個 select 取代 input[type=time]，避免 iOS 捲軸 picker 無法滑動的問題 */}
+                  <select
+                    value={form.time ? form.time.split(":")[0] : ""}
+                    onChange={(e) => {
+                      const h = e.target.value;
+                      const m = form.time ? form.time.split(":")[1] || "00" : "00";
+                      const val = h ? `${h}:${m}` : "";
+                      set("time", val); touch("time");
+                    }}
                     onBlur={() => touch("time")}
-                    className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
-                  />
+                    className="bg-transparent text-sm text-gray-700 outline-none"
+                  >
+                    <option value="">小時</option>
+                    {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")).map(h => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                  <span className="text-gray-400 text-sm">:</span>
+                  <select
+                    value={form.time ? form.time.split(":")[1] || "" : ""}
+                    onChange={(e) => {
+                      const m = e.target.value;
+                      const h = form.time ? form.time.split(":")[0] || "00" : "00";
+                      const val = m ? `${h}:${m}` : "";
+                      set("time", val); touch("time");
+                    }}
+                    onBlur={() => touch("time")}
+                    className="bg-transparent text-sm text-gray-700 outline-none"
+                  >
+                    <option value="">分鐘</option>
+                    {["00","05","10","15","20","25","30","35","40","45","50","55"].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
                 </div>
                 <span className={fieldErr("time", !form.time)}>⚠ 請輸入出發時間</span>
               </div>
@@ -350,11 +409,20 @@ function PostRidePage() {
               </div>
             )}
 
+            {!user?.isDriver && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700 flex items-center gap-2">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+                請先至「個人資料 → 編輯資料」開啟司機設定，才能發布行程
+              </div>
+            )}
             <button
               onClick={() => {
                 touch("from"); touch("to"); touch("time"); if (dateMode === "single") touch("date");
-                if (step1Valid) setStep(2);
+                if (step1Valid && user?.isDriver) setStep(2);
               }}
+              disabled={!user?.isDriver}
               className="w-full bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold py-4 rounded-xl shadow disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all"
             >
               下一步：費用設定

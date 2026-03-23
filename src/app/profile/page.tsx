@@ -96,7 +96,7 @@ export default function ProfilePage() {
               </div>
               <div>
                 <p className="text-xs text-gray-400">揪車錢包餘額</p>
-                <p className="text-xl font-bold text-gray-800">NT$ {user.balance.toLocaleString()}</p>
+                <p className="text-xl font-bold text-gray-800">NT${user.balance.toLocaleString()}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -131,7 +131,7 @@ export default function ProfilePage() {
           <MenuItem
             href="/wallet"
             label="我的錢包"
-            value={`NT$ ${user.balance.toLocaleString()}`}
+            value={`NT$${user.balance.toLocaleString()}`}
             icon={<svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>}
           />
           <MenuItem
@@ -155,8 +155,8 @@ export default function ProfilePage() {
         {/* 其他 */}
         <div className="bg-white rounded-2xl shadow-sm p-4">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">其他</p>
-          <MenuItem label="客服中心" icon={<svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>} />
-          <MenuItem label="關於揪車" icon={<svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>} />
+          <MenuItem label="客服中心" onClick={() => alert("客服信箱：support@jiuche.app\n服務時間：週一至週五 09:00–18:00")} icon={<svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>} />
+          <MenuItem label="關於揪車" onClick={() => alert("揪車 JiuChe v0.1.0\n企業 ESG 減碳共乘平台\n© 2025 JiuChe Inc.")} icon={<svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>} />
           <MenuItem label="登出" danger onClick={handleLogout}
             icon={<svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>}
           />

@@ -1,12 +1,11 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [show, setShow] = useState(false);
 
   const driverName = searchParams.get("driverName") || "司機";
@@ -15,7 +14,16 @@ function SuccessContent() {
   const time = searchParams.get("time") || "";
   const co2 = searchParams.get("co2") || "0";
   const price = searchParams.get("price") || "0";
-  const [bookingId] = useState(() => "JC" + Math.floor(100000 + Math.random() * 900000));
+  const [bookingId] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem("jiuche_last_booking");
+      if (raw) {
+        const saved = JSON.parse(raw) as { bookingId?: string };
+        if (saved.bookingId) return "JC" + saved.bookingId.slice(-6).toUpperCase();
+      }
+    } catch { /* ignore */ }
+    return "JC" + Math.floor(100000 + Math.random() * 900000);
+  });
 
   useEffect(() => {
     const t = setTimeout(() => setShow(true), 100);

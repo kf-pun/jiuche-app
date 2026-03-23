@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { RideInsert } from "@/types/database";
 
 // ── Search ──────────────────────────────────────────────────────────────────
@@ -34,8 +34,13 @@ export async function searchRides(
   date: string
 ): Promise<RideResult[]> {
   const supabase = await createClient();
+  const service = await createServiceClient();
 
-  let query = supabase
+  // 取得當前用戶（用於排除自己發布的行程）
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // 使用 service client 繞過 RLS，確保未登入也能看到司機資料
+  let query = service
     .from("rides")
     .select(`
       id, from_location, to_location, departure_time,
@@ -44,6 +49,9 @@ export async function searchRides(
     `)
     .eq("status", "active")
     .gt("available_seats", 0);
+
+  // 排除自己發布的行程
+  if (user) query = query.neq("driver_id", user.id);
 
   // 日期範圍（台灣時區當天）
   if (date) {
@@ -102,6 +110,12 @@ export interface RideDetail {
   meetingPoint: string;
   carModel: string;
   notes: string;
+  originLat: number | null;
+  originLng: number | null;
+  destinationLat: number | null;
+  destinationLng: number | null;
+  distanceKm: number | null;
+  fareLimit: number | null;
   driver: {
     id: string;
     name: string;
@@ -121,6 +135,8 @@ export async function getRideDetail(id: string): Promise<RideDetail | null> {
       id, from_location, to_location, departure_time,
       price, total_seats, available_seats, co2_saved,
       meeting_point, notes,
+      origin_lat, origin_lng, destination_lat, destination_lng,
+      distance_km, fare_limit,
       driver:users!driver_id (id, name, company, rating, rating_count, vehicle_type, vehicle_color)
     `)
     .eq("id", id)
@@ -153,6 +169,12 @@ export async function getRideDetail(id: string): Promise<RideDetail | null> {
     meetingPoint: data.meeting_point || "",
     carModel: carParts || "未填寫",
     notes: data.notes || "",
+    originLat: data.origin_lat != null ? Number(data.origin_lat) : null,
+    originLng: data.origin_lng != null ? Number(data.origin_lng) : null,
+    destinationLat: data.destination_lat != null ? Number(data.destination_lat) : null,
+    destinationLng: data.destination_lng != null ? Number(data.destination_lng) : null,
+    distanceKm: data.distance_km != null ? Number(data.distance_km) : null,
+    fareLimit: data.fare_limit != null ? Number(data.fare_limit) : null,
     driver: {
       id: d?.id ?? "",
       name: d?.name ?? "未知",
@@ -196,7 +218,7 @@ export async function getDriverReviews(
   driverId: string,
   limit = 10
 ): Promise<DriverReviewItem[]> {
-  const supabase = await createClient();
+  const supabase = await createServiceClient();
 
   const { data, error } = await supabase
     .from("reviews")
@@ -236,6 +258,13 @@ export interface CreateRideInput {
   meetingPoint: string;
   notes: string;
   recurring: boolean;
+  originLat?: number | null;
+  originLng?: number | null;
+  destinationLat?: number | null;
+  destinationLng?: number | null;
+  distanceKm?: number | null;
+  durationMinutes?: number | null;
+  fareLimit?: number | null;
 }
 
 export interface CreateRideResult {
@@ -250,6 +279,16 @@ export async function createRide(input: CreateRideInput): Promise<CreateRideResu
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: "未登入" };
+  }
+
+  // 確認用戶已開啟司機設定
+  const { data: profile } = await supabase
+    .from("users")
+    .select("is_driver")
+    .eq("id", user.id)
+    .single();
+  if (!profile?.is_driver) {
+    return { success: false, error: "請先開啟司機設定才能發布行程" };
   }
 
   // 組合出發時間（本地時間帶台灣時區）
@@ -271,6 +310,14 @@ export async function createRide(input: CreateRideInput): Promise<CreateRideResu
     meeting_point: input.meetingPoint || null,
     notes: input.notes || null,
     status: "active",
+    // 地圖欄位（選填）
+    ...(input.originLat != null && { origin_lat: input.originLat }),
+    ...(input.originLng != null && { origin_lng: input.originLng }),
+    ...(input.destinationLat != null && { destination_lat: input.destinationLat }),
+    ...(input.destinationLng != null && { destination_lng: input.destinationLng }),
+    ...(input.distanceKm != null && { distance_km: input.distanceKm }),
+    ...(input.durationMinutes != null && { duration_minutes: input.durationMinutes }),
+    ...(input.fareLimit != null && { fare_limit: input.fareLimit }),
   };
 
   const { data, error } = await supabase
@@ -285,4 +332,53 @@ export async function createRide(input: CreateRideInput): Promise<CreateRideResu
   }
 
   return { success: true, rideId: data.id };
+}
+
+// ── Cancel Ride（司機取消自己的行程）────────────────────────────────────────
+
+export async function cancelRide(rideId: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const service = await createServiceClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "未登入" };
+
+  // 確認是本人的行程且為 active
+  const { data: ride, error: rErr } = await service
+    .from("rides")
+    .select("id, driver_id, status")
+    .eq("id", rideId)
+    .single();
+
+  if (rErr || !ride) return { success: false, error: "找不到行程" };
+  if (ride.driver_id !== user.id) return { success: false, error: "無權限取消此行程" };
+  if (ride.status !== "active") return { success: false, error: "此行程無法取消" };
+
+  // 取得所有已確認的乘客訂單
+  const { data: bookings } = await service
+    .from("bookings")
+    .select("id, passenger_id, total_price")
+    .eq("ride_id", rideId)
+    .eq("status", "confirmed");
+
+  // 逐一退款給乘客
+  for (const b of bookings ?? []) {
+    await service.from("bookings").update({ status: "cancelled" }).eq("id", b.id);
+    const { data: passenger } = await service.from("users").select("balance").eq("id", b.passenger_id).single();
+    if (passenger) {
+      await service.from("users").update({ balance: passenger.balance + b.total_price }).eq("id", b.passenger_id);
+      await service.from("wallet_transactions").insert({
+        user_id: b.passenger_id,
+        type: "refund" as const,
+        amount: b.total_price,
+        description: "司機取消行程退款",
+        reference_id: b.id,
+      });
+    }
+  }
+
+  // 將行程設為 cancelled
+  await service.from("rides").update({ status: "cancelled" }).eq("id", rideId);
+
+  return { success: true };
 }

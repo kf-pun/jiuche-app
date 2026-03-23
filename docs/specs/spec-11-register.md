@@ -1,7 +1,7 @@
 # 註冊 功能規格書
 
-**版本：** v1.0
-**日期：** 2026-03-17
+**版本：** v1.1
+**日期：** 2026-03-19
 **狀態：** 已完成
 
 ---
@@ -33,14 +33,15 @@
 - 司機設定切換開關（預設關閉）
 - 司機欄位（開啟後顯示）：車型（必填）、車牌號碼（必填）、車身顏色（6 種色票，非必填）
 - 表單驗證：欄位空白時顯示紅色錯誤訊息，錯誤清除時即時回饋
-- 提交後呼叫 `login(phone, userData)` 建立登入狀態
+- 提交後呼叫 `supabase.from("users").insert(...)` 寫入 DB，再呼叫 `refreshUser()` 同步前端狀態
 - 提交中顯示旋轉動畫，按鈕 disabled
 - 完成後跳回 `sessionStorage` 的 `jiuche_redirect`，無則跳首頁 `/`
+- 車牌欄位即時 transform：`replace(/[^A-Za-z0-9-]/g, "").toUpperCase()`（過濾特殊字元 + 強制大寫）
 - ESG 說明卡片（告知每次共乘自動計算減碳量）
 - 使用 `<Suspense>` 包裹（因使用 `useSearchParams` 讀取 `phone` 參數）
 
 ### 待製作
-- 登入頁（spec-04）判斷新用戶並自動導向此頁（目前登入一律套用 DEFAULT_USER，未觸發此頁）
+- 無（登入頁 spec-04 已實作新用戶判斷，OTP 驗證後若 DB 無對應 users 記錄即導向此頁）
 
 ---
 
@@ -53,7 +54,7 @@
 4. （可選）開啟「我想當司機」→ 填寫車型、車牌、選擇車色
 5. 點擊「完成註冊，開始揪車！」
 6. 系統驗證通過 → 顯示旋轉動畫（模擬 1 秒）
-7. 呼叫 `login(phone, userData)` → 寫入 `localStorage`
+7. 呼叫 `supabase.from("users").insert(...)` 寫入 DB → 呼叫 `refreshUser()` 同步前端狀態
 8. 讀取 `sessionStorage` 的 `jiuche_redirect` → 清除後跳回原頁面（無則跳 `/`）
 
 ### 4.2 失敗例外
@@ -111,20 +112,26 @@
 
 | 項目 | 說明 |
 |------|------|
-| `phone` | 由登入頁透過 URL query 傳入，`useSearchParams().get("phone")`，用於呼叫 `login(phone, ...)` |
-| 登入持久化 | 呼叫 `login()` 後寫入 `localStorage` key: `jiuche_user` |
+| `phone` | 由登入頁透過 URL query 傳入，`useSearchParams().get("phone")`，轉換為 E.164 格式（`+8869xxxxxxxx`）存入 DB |
+| 帳號建立 | `supabase.from("users").insert(...)` 寫入 `public.users`，欄位包含 id（Supabase auth UID）、phone、name、company、is_driver、vehicle_type/plate/color、balance=0、co2_total=0、rating=0 |
+| 狀態同步 | 寫入成功後呼叫 `refreshUser()` 從 DB 重新載入 authContext |
 | Redirect | 讀取並清除 `sessionStorage` key: `jiuche_redirect`，跳回原頁或 `/` |
 
-**使用者物件（填寫後傳入 `login()`）：**
+**寫入 DB 的使用者欄位：**
 ```ts
 {
-  name: string,         // 使用者輸入
-  avatar: name[0],      // 取姓名第一個字
-  company: string,      // 使用者輸入
-  isDriver: boolean,    // 切換開關狀態
-  carModel: string,     // 司機模式才傳入，否則空字串
-  carPlate: string,     // 同上
-  carColor: string,     // 同上，未選則空字串
+  id: authUser.id,       // Supabase auth UID
+  phone: "+8869xxxxxxxx", // E.164 格式
+  name: string,
+  company: string,
+  is_driver: boolean,
+  vehicle_type: string | null,  // 司機模式才有值
+  vehicle_plate: string | null,
+  vehicle_color: string | null,
+  balance: 0,
+  co2_total: 0,
+  rating: 0,
+  rating_count: 0,
 }
 ```
 
@@ -144,10 +151,11 @@
 
 ## 8. 備註
 
-- 目前登入頁（spec-04）完成 OTP 後一律套用 `DEFAULT_USER`，不會實際跳轉至此頁。本頁目前僅能透過直接輸入網址進入測試。
-- 正式上線需在登入頁判斷「新用戶」並導向此頁；「舊用戶」則直接套用後端資料登入。
-- 車身顏色為非必填項目，未選時存空字串 `""`。
-- 所有資料目前僅存於 `localStorage`，無後端持久化。
+- 登入頁（spec-04）已實作新用戶判斷：OTP 驗證後查詢 `public.users`，若無記錄則導向 `/auth/register?phone={號碼}`。
+- 車身顏色為非必填項目，未選時存 `null`（`vehicle_color: null`）。
+- 資料寫入 Supabase `public.users` 表，已完成後端持久化。
+- 姓名、公司驗證僅檢查是否空白（`!trim()`），無最低字元長度限制。
+- Session 過期時提交會收到「Session 已過期，請重新登入」錯誤並跳回 `/auth/login`。
 
 ---
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRow } from "@/types/database";
 
@@ -13,7 +13,8 @@ export interface User {
   rating: number;
   totalRides: number;
   isDriver: boolean;
-  carModel: string;
+  vehicleType: string;  // 8種類別，用於油耗計算
+  carModel: string;     // 品牌型號自由文字，用於顯示
   carPlate: string;
   carColor: string;
   balance: number;
@@ -29,9 +30,10 @@ function rowToUser(row: UserRow): User {
     company: row.company,
     avatar: row.name[0] || "?",
     rating: row.rating,
-    totalRides: row.rating_count,
+    totalRides: 0, // overwritten by fetchUser() with actual bookings count
     isDriver: row.is_driver,
-    carModel: row.vehicle_type || "",
+    vehicleType: row.vehicle_type || "",
+    carModel: row.car_model || "",
     carPlate: row.vehicle_plate || "",
     carColor: row.vehicle_color || "",
     balance: row.balance,
@@ -43,6 +45,7 @@ function rowToUser(row: UserRow): User {
 interface AuthContextType {
   user: User | null;
   isLoggedIn: boolean;
+  authLoading: boolean;
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
   deductBalance: (amount: number) => boolean;
@@ -54,25 +57,31 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const supabase = createClient();
+  const [authLoading, setAuthLoading] = useState(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchUser = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .single();
-    setUser(data ? rowToUser(data as UserRow) : null);
+    const [{ data }, { count }] = await Promise.all([
+      supabase.from("users").select("*").eq("id", userId).single(),
+      supabase.from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("passenger_id", userId)
+        .neq("status", "cancelled"),
+    ]);
+    setUser(data ? { ...rowToUser(data as UserRow), totalRides: count ?? 0 } : null);
+    setAuthLoading(false);
   }, [supabase]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) fetchUser(session.user.id);
+      else setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) fetchUser(session.user.id);
-      else setUser(null);
+      else { setUser(null); setAuthLoading(false); }
     });
 
     return () => subscription.unsubscribe();
@@ -96,7 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: updated.name,
       company: updated.company,
       is_driver: updated.isDriver,
-      vehicle_type: updated.carModel || null,
+      vehicle_type: updated.vehicleType || null,
+      car_model: updated.carModel || null,
       vehicle_plate: updated.carPlate || null,
       vehicle_color: updated.carColor || null,
     }).eq("id", user.id);
@@ -118,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn: !!user, logout, updateUser, deductBalance, addBalance, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoggedIn: !!user, authLoading, logout, updateUser, deductBalance, addBalance, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

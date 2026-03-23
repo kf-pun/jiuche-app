@@ -20,6 +20,7 @@ const TX_TYPE: Record<string, { label: string; cls: string }> = {
   topup:      { label: "儲值",     cls: "bg-blue-100 text-blue-700" },
   payment:    { label: "付款",     cls: "bg-orange-100 text-orange-700" },
   refund:     { label: "退款",     cls: "bg-green-100 text-green-700" },
+  earning:    { label: "司機收入", cls: "bg-emerald-100 text-emerald-700" },
   adjustment: { label: "手動調整", cls: "bg-purple-100 text-purple-700" },
 };
 
@@ -150,6 +151,14 @@ export default function AdminBookingDetailPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">總金額</span>
               <span className="text-sm font-bold text-gray-900">NT$ {booking.totalPrice.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between pl-3 border-l-2 border-gray-100">
+              <span className="text-xs text-gray-400">平台服務費</span>
+              <span className="text-xs text-gray-500">NT$ {booking.serviceFee.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between pl-3 border-l-2 border-emerald-200">
+              <span className="text-xs text-emerald-600">司機應得</span>
+              <span className="text-xs font-medium text-emerald-600">NT$ {booking.driverEarning.toLocaleString()}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">減碳貢獻</span>
@@ -297,6 +306,14 @@ export default function AdminBookingDetailPage() {
               </svg>
             </div>
             <h3 className="text-lg font-bold text-gray-900 text-center mb-2">標記訂單為已完成</h3>
+            <div className="bg-emerald-50 rounded-xl p-4 mb-4 text-center">
+              <p className="text-xs text-emerald-600 mb-1">司機收款</p>
+              <p className="text-2xl font-bold text-emerald-600">NT$ {booking.driverEarning.toLocaleString()}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                將入帳至 {booking.driverName} 的揪車錢包
+                {booking.serviceFee > 0 && `（總金額 ${booking.totalPrice} − 服務費 ${booking.serviceFee}）`}
+              </p>
+            </div>
             <p className="text-sm text-gray-500 text-center mb-5">確認後，乘客將可對此行程進行評價。</p>
             <div className="flex gap-2">
               <button onClick={() => setShowComplete(false)} className="flex-1 py-2 rounded-lg text-sm border border-gray-200 hover:bg-gray-50">取消</button>

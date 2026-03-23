@@ -40,16 +40,15 @@ export default function Home() {
   const router = useRouter();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [date, setDate] = useState(() => {
-    const d = new Date();
-    return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
-  });
+  const [date, setDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [mapTarget, setMapTarget] = useState<"from" | "to" | null>(null);
 
   useEffect(() => {
     setSearchHistory(loadSearchHistory());
+    // 在 client 端設定今天日期（避免 SSR UTC 與台灣本地時間不同步）
+    setDate(new Date().toLocaleDateString("en-CA"));
   }, []);
 
   const handleSearch = () => {
@@ -61,10 +60,7 @@ export default function Home() {
     }, 1000);
   };
 
-  const today = (() => {
-    const d = new Date();
-    return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
-  })();
+  const today = date; // 與 date state 同步，確保 min 不早於今天
 
   return (
     <div className="flex flex-col min-h-full">

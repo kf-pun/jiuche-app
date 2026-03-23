@@ -18,6 +18,11 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* 隱藏 date input 的瀏覽器原生日曆 icon，避免與自訂 icon 重疊 */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
 @media print {
   /* 後台 ESG 報告列印：隱藏左側導覽、操作按鈕，只印報告內容 */
   aside,

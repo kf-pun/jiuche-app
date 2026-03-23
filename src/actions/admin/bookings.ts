@@ -85,9 +85,13 @@ export interface AdminBookingDetail {
   createdAt: string;
   seats: number;
   totalPrice: number;
+  serviceFee: number;
+  driverEarning: number;
   passengerId: string;
   passengerName: string;
   passengerPhone: string;
+  driverId: string;
+  driverName: string;
   from: string;
   to: string;
   departureTime: string;
@@ -101,8 +105,8 @@ export async function getAdminBookingDetail(bookingId: string): Promise<AdminBoo
   const { data: b } = await service
     .from("bookings")
     .select(`
-      id, seats, total_price, status, created_at,
-      ride:rides (from_location, to_location, departure_time, price, co2_saved),
+      id, seats, total_price, service_fee, status, created_at,
+      ride:rides (from_location, to_location, departure_time, price, co2_saved, driver:users(id, name)),
       passenger:users (id, name, phone)
     `)
     .eq("id", bookingId)
@@ -118,15 +122,20 @@ export async function getAdminBookingDetail(bookingId: string): Promise<AdminBoo
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bd = b as any;
+  const serviceFee = bd.service_fee ?? 0;
   return {
     id: b.id,
     status: b.status,
     createdAt: b.created_at,
     seats: b.seats,
     totalPrice: b.total_price,
+    serviceFee,
+    driverEarning: b.total_price - serviceFee,
     passengerId: bd.passenger?.id ?? "",
     passengerName: bd.passenger?.name ?? "—",
     passengerPhone: bd.passenger?.phone ?? "—",
+    driverId: bd.ride?.driver?.id ?? "",
+    driverName: bd.ride?.driver?.name ?? "—",
     from: bd.ride?.from_location ?? "—",
     to: bd.ride?.to_location ?? "—",
     departureTime: bd.ride?.departure_time ?? "",
@@ -196,11 +205,58 @@ export async function cancelBookingWithRefund(
 
 export async function completeBooking(bookingId: string): Promise<ActionResult> {
   const service = await createServiceClient();
+
   const { data: booking } = await service
-    .from("bookings").select("status").eq("id", bookingId).single();
+    .from("bookings")
+    .select("id, status, total_price, service_fee, ride_id, passenger_id")
+    .eq("id", bookingId)
+    .single();
   if (!booking) return { success: false, error: "找不到訂單" };
   if (booking.status !== "confirmed") return { success: false, error: "此訂單無法標記完成" };
 
+  // 取得司機 ID
+  const { data: ride } = await service
+    .from("rides")
+    .select("driver_id")
+    .eq("id", booking.ride_id)
+    .single();
+  if (!ride) return { success: false, error: "找不到對應行程" };
+
+  const shortId = `#JC${bookingId.replace(/-/g, "").slice(0, 6).toUpperCase()}`;
+
+  // 1. 更新訂單狀態
   await service.from("bookings").update({ status: "completed" }).eq("id", bookingId);
+
+  // 2. 計算司機應得金額（總金額 - 平台服務費）
+  const driverEarning = (booking.total_price ?? 0) - (booking.service_fee ?? 0);
+
+  // 3. 寫入司機 earning 交易
+  await service.from("wallet_transactions").insert({
+    user_id: ride.driver_id,
+    type: "earning" as const,
+    amount: driverEarning,
+    description: `共乘收入 ${shortId}`,
+    reference_id: bookingId,
+  });
+
+  // 4. 更新司機餘額
+  const { data: driver } = await service
+    .from("users").select("balance").eq("id", ride.driver_id).single();
+  if (driver) {
+    await service
+      .from("users")
+      .update({ balance: driver.balance + driverEarning })
+      .eq("id", ride.driver_id);
+  }
+
+  // 5. 發送司機收款通知
+  await service.from("notifications").insert({
+    user_id: ride.driver_id,
+    type: "payment" as const,
+    title: "收款通知",
+    body: `訂單 ${shortId} 已完成，NT$${driverEarning} 已入帳至您的揪車錢包。`,
+    reference_id: bookingId,
+  });
+
   return { success: true };
 }

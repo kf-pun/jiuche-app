@@ -4,6 +4,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getRideDetail, getDriverReviews, type RideDetail, type DriverReviewItem } from "@/actions/rides";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+const RouteMapCard = dynamic(() => import("@/components/RouteMapCard"), { ssr: false });
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
@@ -120,6 +122,19 @@ export default function RideDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Route map card — only shown when coordinates are available */}
+      {ride.originLat != null && ride.originLng != null &&
+       ride.destinationLat != null && ride.destinationLng != null && (
+        <div className="px-4 mt-3">
+          <RouteMapCard
+            originLat={ride.originLat}
+            originLng={ride.originLng}
+            destinationLat={ride.destinationLat}
+            destinationLng={ride.destinationLng}
+          />
+        </div>
+      )}
 
       {/* ESG highlight */}
       <div className="px-4 mt-3">

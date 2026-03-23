@@ -22,6 +22,7 @@ function PostRidePage() {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [mapTarget, setMapTarget] = useState<"from" | "to" | null>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   // 路線資訊（透過 Directions API 取得）
   const [routeInfo, setRouteInfo] = useState<{
@@ -299,17 +300,21 @@ function PostRidePage() {
                 </div>
                 {dateMode === "single" ? (
                   <>
-                    <div className={`flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border transition-colors ${touched.date && !form.date ? "border-red-300" : "border-gray-100 focus-within:border-green-400"}`}>
+                    <div
+                      className={`flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border cursor-pointer transition-colors ${touched.date && !form.date ? "border-red-300" : "border-gray-100 focus-within:border-green-400"}`}
+                      onClick={() => dateInputRef.current?.showPicker?.()}
+                    >
                       <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
                       </svg>
                       <input
+                        ref={dateInputRef}
                         type="date"
                         min={today}
                         value={form.date}
                         onChange={(e) => { set("date", e.target.value); touch("date"); }}
                         onBlur={() => touch("date")}
-                        className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
+                        className="flex-1 bg-transparent text-sm text-gray-700 outline-none cursor-pointer"
                       />
                     </div>
                     <span className={fieldErr("date", !form.date)}>⚠ 請選擇出發日期</span>

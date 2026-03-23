@@ -11,6 +11,7 @@ interface Suggestion {
 interface PlacesAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
+  onSelect?: (address: string, lat: number, lng: number) => void;
   placeholder?: string;
   className?: string;
   id?: string;
@@ -20,6 +21,7 @@ interface PlacesAutocompleteProps {
 export default function PlacesAutocomplete({
   value,
   onChange,
+  onSelect,
   placeholder,
   className,
   id,
@@ -73,11 +75,20 @@ export default function PlacesAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  function selectSuggestion(s: Suggestion) {
+  async function selectSuggestion(s: Suggestion) {
     onChange(s.description);
     setOpen(false);
     setSuggestions([]);
     setActiveIndex(-1);
+    if (onSelect) {
+      try {
+        const res = await fetch(`/api/geocode?address=${encodeURIComponent(s.description)}`);
+        const data = await res.json();
+        if (data.lat != null && data.lng != null) {
+          onSelect(s.description, data.lat, data.lng);
+        }
+      } catch { /* ignore */ }
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {

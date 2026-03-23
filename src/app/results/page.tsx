@@ -148,6 +148,10 @@ function ResultsContent() {
   const from = searchParams.get("from") || "";
   const to = searchParams.get("to") || "";
   const date = searchParams.get("date") || "";
+  const fromLat = searchParams.get("fromLat") ? Number(searchParams.get("fromLat")) : null;
+  const fromLng = searchParams.get("fromLng") ? Number(searchParams.get("fromLng")) : null;
+  const toLat = searchParams.get("toLat") ? Number(searchParams.get("toLat")) : null;
+  const toLng = searchParams.get("toLng") ? Number(searchParams.get("toLng")) : null;
 
   const [rides, setRides] = useState<RideResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,11 +159,12 @@ function ResultsContent() {
   const [timeRange, setTimeRange] = useState<string>("all");
 
   useEffect(() => {
-    searchRides(from, to, date).then((result) => {
+    searchRides(from, to, date, fromLat, fromLng, toLat, toLng).then((result) => {
       setRides(result);
       setLoading(false);
     });
-  }, [from, to, date]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from, to, date, fromLat, fromLng, toLat, toLng]);
 
   const formatted = date
     ? new Date(date + "T00:00:00").toLocaleDateString("zh-TW", { month: "long", day: "numeric", weekday: "short" })

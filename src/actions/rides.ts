@@ -13,6 +13,10 @@ export interface RideResult {
   price: number;
   availableSeats: number;
   co2Saved: number;
+  originLat: number | null;
+  originLng: number | null;
+  destinationLat: number | null;
+  destinationLng: number | null;
   driver: {
     id: string;
     name: string;
@@ -28,10 +32,26 @@ function toTWTime(isoStr: string): string {
   return `${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")}`;
 }
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+const SEARCH_RADIUS_KM = 5;
+
 export async function searchRides(
   from: string,
   to: string,
-  date: string
+  date: string,
+  fromLat?: number | null,
+  fromLng?: number | null,
+  toLat?: number | null,
+  toLng?: number | null
 ): Promise<RideResult[]> {
   const supabase = await createClient();
   const service = await createServiceClient();
@@ -39,12 +59,15 @@ export async function searchRides(
   // 取得當前用戶（用於排除自己發布的行程）
   const { data: { user } } = await supabase.auth.getUser();
 
+  const useCoords = fromLat != null && fromLng != null && toLat != null && toLng != null;
+
   // 使用 service client 繞過 RLS，確保未登入也能看到司機資料
   let query = service
     .from("rides")
     .select(`
       id, from_location, to_location, departure_time,
       price, available_seats, co2_saved,
+      origin_lat, origin_lng, destination_lat, destination_lng,
       driver:users!driver_id (id, name, company, rating, rating_count, vehicle_type)
     `)
     .eq("status", "active")
@@ -60,9 +83,11 @@ export async function searchRides(
     query = query.gte("departure_time", dayStart).lte("departure_time", dayEnd);
   }
 
-  // 起迄點模糊搜尋
-  if (from) query = query.ilike("from_location", `%${from}%`);
-  if (to) query = query.ilike("to_location", `%${to}%`);
+  // 有座標時不做文字過濾（改在 JS 層做 Haversine），無座標則模糊比對
+  if (!useCoords) {
+    if (from) query = query.ilike("from_location", `%${from}%`);
+    if (to) query = query.ilike("to_location", `%${to}%`);
+  }
 
   query = query.order("departure_time", { ascending: true });
 
@@ -73,7 +98,7 @@ export async function searchRides(
     return [];
   }
 
-  return (data ?? []).map((r) => {
+  let rides = (data ?? []).map((r) => {
     const d = r.driver as unknown as { id: string; name: string; company: string; rating: number; rating_count: number; vehicle_type: string | null } | null;
     return {
       id: r.id,
@@ -83,6 +108,10 @@ export async function searchRides(
       price: r.price,
       availableSeats: r.available_seats,
       co2Saved: Number(r.co2_saved),
+      originLat: r.origin_lat != null ? Number(r.origin_lat) : null,
+      originLng: r.origin_lng != null ? Number(r.origin_lng) : null,
+      destinationLat: r.destination_lat != null ? Number(r.destination_lat) : null,
+      destinationLng: r.destination_lng != null ? Number(r.destination_lng) : null,
       driver: {
         id: d?.id ?? "",
         name: d?.name ?? "未知",
@@ -93,6 +122,21 @@ export async function searchRides(
       },
     };
   });
+
+  // 座標搜尋：Haversine 半徑過濾（有座標的行程用距離，無座標的行程用文字比對兜底）
+  if (useCoords) {
+    rides = rides.filter((r) => {
+      const originOk = r.originLat != null && r.originLng != null
+        ? haversineKm(fromLat!, fromLng!, r.originLat, r.originLng) <= SEARCH_RADIUS_KM
+        : (from ? r.from.includes(from) : true);
+      const destOk = r.destinationLat != null && r.destinationLng != null
+        ? haversineKm(toLat!, toLng!, r.destinationLat, r.destinationLng) <= SEARCH_RADIUS_KM
+        : (to ? r.to.includes(to) : true);
+      return originOk && destOk;
+    });
+  }
+
+  return rides;
 }
 
 // ── Get Ride Detail ──────────────────────────────────────────────────────────

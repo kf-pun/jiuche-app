@@ -41,6 +41,10 @@ export default function Home() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [date, setDate] = useState("");
+  const [fromLat, setFromLat] = useState<number | null>(null);
+  const [fromLng, setFromLng] = useState<number | null>(null);
+  const [toLat, setToLat] = useState<number | null>(null);
+  const [toLng, setToLng] = useState<number | null>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -56,8 +60,13 @@ export default function Home() {
     if (!from || !to || !date) return;
     setLoading(true);
     saveSearchTerm(`${from} → ${to}`);
+    const params = new URLSearchParams({ from, to, date });
+    if (fromLat != null) params.set("fromLat", String(fromLat));
+    if (fromLng != null) params.set("fromLng", String(fromLng));
+    if (toLat != null) params.set("toLat", String(toLat));
+    if (toLng != null) params.set("toLng", String(toLng));
     setTimeout(() => {
-      router.push(`/results?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${date}`);
+      router.push(`/results?${params.toString()}`);
     }, 1000);
   };
 
@@ -95,7 +104,7 @@ export default function Home() {
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-medium text-gray-500" htmlFor="home-from">出發地</label>
               <div className="flex items-center gap-1.5">
-                <GpsButton onLocate={setFrom} />
+                <GpsButton onLocate={(addr, lat, lng) => { setFrom(addr); setFromLat(lat); setFromLng(lng); }} />
                 <button
                   onClick={() => setMapTarget("from")}
                   aria-label="用地圖選取出發地"
@@ -116,7 +125,8 @@ export default function Home() {
               <PlacesAutocomplete
                 id="home-from"
                 value={from}
-                onChange={setFrom}
+                onChange={(v) => { setFrom(v); setFromLat(null); setFromLng(null); }}
+                onSelect={(addr, lat, lng) => { setFrom(addr); setFromLat(lat); setFromLng(lng); }}
                 placeholder="輸入出發地點"
                 aria-label="出發地"
                 className="w-full bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
@@ -163,7 +173,8 @@ export default function Home() {
               <PlacesAutocomplete
                 id="home-to"
                 value={to}
-                onChange={setTo}
+                onChange={(v) => { setTo(v); setToLat(null); setToLng(null); }}
+                onSelect={(addr, lat, lng) => { setTo(addr); setToLat(lat); setToLng(lng); }}
                 placeholder="輸入目的地點"
                 aria-label="目的地"
                 className="w-full bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
@@ -300,9 +311,9 @@ export default function Home() {
       {mapTarget && (
         <MapPickerModal
           onClose={() => setMapTarget(null)}
-          onConfirm={(addr) => {
-            if (mapTarget === "from") setFrom(addr);
-            else setTo(addr);
+          onConfirm={(addr, lat, lng) => {
+            if (mapTarget === "from") { setFrom(addr); setFromLat(lat); setFromLng(lng); }
+            else { setTo(addr); setToLat(lat); setToLng(lng); }
             setMapTarget(null);
           }}
         />
